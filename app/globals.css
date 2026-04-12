@@ -1,0 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Titillium+Web:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Titillium Web',sans-serif;background:#F8F6F1;color:#1C1C1C}
+@keyframes twinkle{0%,100%{opacity:.15}50%{opacity:.9}}
+@keyframes beam{0%{transform:rotate(-25deg);opacity:.5}50%{transform:rotate(25deg);opacity:.2}100%{transform:rotate(-25deg);opacity:.5}}
+@keyframes domeGlow{0%,100%{filter:drop-shadow(0 0 3px #D4930D44)}50%{filter:drop-shadow(0 0 10px #D4930D88)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+::selection{background:#D4930D33}
+a{text-decoration:none;color:inherit}
+textarea,input,select,button{font-family:'Titillium Web',sans-serif}
