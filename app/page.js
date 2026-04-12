@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 const SECTIONS = [
   { id:"attualita",name:"Attualità",color:"#1A5276",icon:"🌍" },
@@ -94,7 +94,7 @@ export default function HomePage(){
   const [sec,setSec]=useState("all");
 
   useEffect(()=>{
-    supabase.from("articles").select("*").eq("status","published").order("published_at",{ascending:false})
+    getSupabase().from("articles").select("*").eq("status","published").order("published_at",{ascending:false})
       .then(({data})=>{setArticles(data||[]);setLoading(false);});
   },[]);
 
