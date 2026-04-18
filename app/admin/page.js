@@ -103,8 +103,9 @@ function AdminApp({password}){
     const [selTitle,setSelTitle]=useState(null);
     const [result,setResult]=useState(null);
     const [err,setErr]=useState(null);
+    const [phase,setPhase]=useState("");
     const s=SECTIONS.find(x=>x.id===sec);
-    const reset=()=>{setStep("idle");setTitles([]);setEchiSrc(null);setSelTitle(null);setResult(null);setErr(null)};
+    const reset=()=>{setStep("idle");setTitles([]);setEchiSrc(null);setSelTitle(null);setResult(null);setErr(null);setPhase("")};
     const todayArts=arts.filter(a=>a.edition_date===tod());
     const todayNonEchi=todayArts.filter(a=>a.section!=="echi"&&a.title);
     const bySection={};todayNonEchi.forEach(a=>{if(!bySection[a.section])bySection[a.section]=[];bySection[a.section].push(a)});
@@ -132,7 +133,7 @@ Rispondi SOLO con un array JSON valido, nessun altro testo prima o dopo:
 [{"title":"Titolo editoriale basato su notizia reale di oggi","angle":"Taglio editoriale — fonte: nome quotidiano"}]`;
       
       try{
-        const t=await scanAI(promptTitoli,model);
+        const t=await scanAI(promptTitoli,"claude",true);
         const p=pj(t);
         if(p&&Array.isArray(p)&&p.length>0){setTitles(p.slice(0,4));setStep("titles")}
         else{setErr("Errore generazione titoli. Riprova.");setStep("idle")}
@@ -160,7 +161,7 @@ Rispondi SOLO con JSON array:
 [{"title":"Titolo editoriale storico-attuale","angle":"Taglio narrativo — periodo storico di riferimento"}]`;
 
       try{
-        const t=await scanAI(promptEchi,model);
+        const t=await scanAI(promptEchi,"claude",true);
         const p=pj(t);
         if(p&&Array.isArray(p)&&p.length>0){setTitles(p.slice(0,4));setStep("titles")}
         else{setErr("Errore titoli.");setStep("echi_pick")}
@@ -182,6 +183,7 @@ Rispondi SOLO con JSON array:
 
       try{
         // ═══ FASE 1: RICERCA FATTI — sempre Claude con web search ═══
+        setPhase("Fase 1: Ricerca fatti con Claude...");
         const promptRicerca = `Oggi è il ${dataOggi}. Cerca sul web tutte le informazioni disponibili su: "${tObj.title}" (${tObj.angle}).
 ${ctx}
 ${focus.trim() ? "Focus: " + focus : ""}
@@ -201,6 +203,8 @@ Scrivi in italiano. Sii completo e dettagliato. Questo dossier sarà la base per
         const fatti = await scanAI(promptRicerca, "claude", true);
 
         // ═══ FASE 2: SCRITTURA ARTICOLO — modello selezionato, senza web search ═══
+        const modelName = MODELS.find(m=>m.id===model)?.name || model;
+        setPhase("Fase 2: Scrittura articolo con " + modelName + "...");
         const sectionPrompts = {
           attualita: `Sei un editorialista senior di una rivista italiana di approfondimento politico-economico.
 
@@ -283,13 +287,13 @@ ${artPrompt}`;
       <div style={{animation:"fadeUp 0.3s ease"}}>
         <Lab>Sezione</Lab>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>{SECTIONS.map(x=><button key={x.id} onClick={()=>{setSec(x.id);reset()}} style={{padding:"10px 18px",borderRadius:10,cursor:"pointer",border:`2px solid ${sec===x.id?x.color:BD}`,background:sec===x.id?x.color+"0D":BW,color:sec===x.id?x.color:TS,fontWeight:600,fontSize:14,transition:"all 0.2s",display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>{x.icon}</span>{x.name}</button>)}</div>
-        <Lab>Modello AI</Lab>
+        <Lab>Modello per la scrittura <span style={{color:BD,fontFamily:"'Titillium Web'",textTransform:"none",letterSpacing:0}}>(i titoli usano sempre Claude)</span></Lab>
         <div style={{display:"flex",gap:6,marginBottom:20}}>{MODELS.map(m=><button key={m.id} onClick={()=>setModel(m.id)} style={{padding:"8px 16px",borderRadius:8,cursor:"pointer",border:`1px solid ${model===m.id?AC:BD}`,background:model===m.id?AC+"12":BW,color:model===m.id?AC:TS,fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:6}}><span>{m.icon}</span>{m.name}</button>)}</div>
         <Lab>Focus <span style={{color:BD}}>(opzionale)</span></Lab>
         <input value={focus} onChange={e=>setFocus(e.target.value)} placeholder="Es. dazi USA-Cina, Sinner, mercato auto elettriche..." style={{width:"100%",padding:"11px 16px",borderRadius:8,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:14,outline:"none",marginBottom:20}}/>
         {sec==="echi"&&step==="idle"&&<div style={{marginBottom:20,padding:16,background:BWM,borderRadius:10,border:`1px solid ${BDL}`}}><Lab>📜 Articoli di oggi come base</Lab>{secsWith.length>0?todayNonEchi.map((a,i)=>{const sc=SECTIONS.find(x=>x.id===a.section);return <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,marginBottom:4}}><span style={{color:sc?.color,fontSize:10}}>●</span><span style={{color:sc?.color,fontWeight:600,fontSize:11}}>{sc?.name}</span><span>{a.title}</span></div>}):<div style={{fontSize:13,color:DG}}>⚠ Crea prima un articolo nelle altre sezioni</div>}</div>}
         {step==="idle"&&<Btn v="gold" onClick={()=>{if(!sec)return;sec==="echi"?startEchi():startRegular()}} disabled={!sec||(sec==="echi"&&secsWith.length===0)} style={{width:"100%",justifyContent:"center",padding:14,fontSize:15,borderRadius:10}}>◉ Avvia Scanner</Btn>}
-        {isLoading&&<Spinner label={step==="load_titles"?"CERCO NOTIZIE DI OGGI...":"FASE 1: RICERCA FATTI... POI SCRITTURA"}/>}
+        {isLoading&&<Spinner label={step==="load_titles"?"CERCO NOTIZIE DI OGGI CON CLAUDE...":(phase||"GENERAZIONE IN CORSO...")}/>}
         {err&&<div style={{padding:14,background:"#FDE8E8",borderRadius:10,marginTop:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><span style={{color:DG,fontSize:13,flex:1}}>⚠ {err}</span><Btn small v="gh" onClick={()=>{setErr(null);setStep("idle")}}>Riprova</Btn></div>}
         {step==="echi_pick"&&<div style={{marginTop:20,animation:"fadeUp 0.4s ease"}}><Lab>📜 Scegli la sezione sorgente</Lab>{secsWith.map(sId=>{const sc=SECTIONS.find(x=>x.id===sId);return <button key={sId} onClick={()=>echiPick(sId)} style={{display:"block",width:"100%",padding:"16px 20px",borderRadius:10,border:`1px solid ${BD}`,background:BW,cursor:"pointer",textAlign:"left",marginBottom:8,borderLeft:`3px solid ${sc?.color}`}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><span style={{fontSize:20}}>{sc?.icon}</span><span style={{fontWeight:700,fontSize:16,color:sc?.color}}>{sc?.name}</span></div>{bySection[sId].map((a,i)=><div key={i} style={{fontSize:13,color:TS,paddingLeft:30}}>• {a.title}</div>)}</button>})}<Btn small v="gh" onClick={reset}>✗ Annulla</Btn></div>}
         {step==="titles"&&<div style={{marginTop:20,animation:"fadeUp 0.4s ease"}}><Lab>{s?.icon} Scegli il titolo</Lab>{titles.map((t,i)=><button key={i} onClick={()=>generate(t)} style={{display:"block",width:"100%",padding:"14px 18px",borderRadius:10,border:`1px solid ${BD}`,background:BW,cursor:"pointer",textAlign:"left",marginBottom:8,borderLeft:`3px solid ${s?.color||AC}`}}><div style={{fontWeight:700,fontSize:15,color:TX,marginBottom:4}}>{t.title}</div><div style={{fontSize:12,color:TD}}>{t.angle}</div></button>)}<div style={{marginTop:12,display:"flex",gap:8}}><Btn small v="gh" onClick={()=>{setStep(sec==="echi"?"echi_pick":"idle");setTitles([])}}>← Indietro</Btn><Btn small v="gh" onClick={sec==="echi"?()=>echiPick(echiSrc):startRegular}>↻ Rigenera</Btn><Btn small v="gh" onClick={reset}>✗ Annulla</Btn></div></div>}
