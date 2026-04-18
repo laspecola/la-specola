@@ -286,7 +286,9 @@ export default function HomePage(){
     });
   },[]);
 
-  const shown=sec==="all"?articles:articles.filter(a=>a.section===sec);
+  const todayISO=new Date().toISOString().split("T")[0];
+  const todayArticles=articles.filter(a=>a.edition_date===todayISO);
+  const shown=sec==="all"?todayArticles:todayArticles.filter(a=>a.section===sec);
   const today=fDate(new Date());
   const goArticle=(a)=>{setCurrentArticle(a);setPage("article");window.scrollTo(0,0)};
   const goHome=()=>{setPage("home");setCurrentArticle(null);window.scrollTo(0,0)};
