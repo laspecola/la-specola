@@ -11,12 +11,9 @@ const SECTIONS = [
 const AC="#D4930D",TX="#1C1C1C",TS="#555550",TD="#999590",BD="#E4E0DA",LIGHT="#F8F6F1",CARD="#FFFFFF",DARK="#0B1118",DARK2="#111923";
 
 function fDate(d){return new Date(d).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
+function fShort(d){return new Date(d).toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"})}
 
-function parseLinks(da_seguire){
-  if(!da_seguire||!Array.isArray(da_seguire))return[];
-  return da_seguire.map(s=>{const p=s.split("|||");return{title:p[0]||"",description:p[1]||""};}).filter(l=>l.title);
-}
-
+// ── Specola SVG ──
 function SpecolaSVG(){
   const stars=[[70,25,1.5,2.5],[140,55,1,4],[210,20,1.3,3.2],[320,40,0.8,5],[420,15,1.6,2.8],[500,48,0.9,3.8],[580,28,1.4,4.5],[650,65,1.1,2.2],[720,22,0.8,3.6],[50,75,0.7,5.2],[260,68,1,2.9],[460,72,0.8,4.2],[600,85,1.2,3.1],[150,42,0.6,5.5],[380,22,0.9,2.1],[540,58,1.3,4.8],[90,55,0.5,3.5],[480,30,0.7,4.1],[330,80,0.6,2.7],[700,45,0.9,3.9]];
   return(
@@ -60,12 +57,21 @@ function SocialIcon({platform,size=18}){
   return <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor"><path d={p[platform]||""}/></svg>;
 }
 
-function ArticleCard({article,featured}){
+// ── Article Card con "Leggi anche" da articoli reali ──
+function ArticleCard({article,featured,allArticles,onReadMore}){
   const sc=SECTIONS.find(s=>s.id===article.section);
-  const links=parseLinks(article.da_seguire);
   const isEchi=article.section==="echi";
+
+  // "Leggi anche": ultimi 2 articoli PRECEDENTI della stessa sezione
+  const prevArticles = (allArticles||[])
+    .filter(a => a.section === article.section && a.id !== article.id)
+    .filter(a => new Date(a.published_at) < new Date(article.published_at))
+    .sort((a,b) => new Date(b.published_at) - new Date(a.published_at))
+    .slice(0,2);
+
   return(
     <div style={{background:isEchi?DARK2:CARD,borderRadius:12,overflow:"hidden",border:`1px solid ${isEchi?"#1E2E40":BD}`,transition:"transform 0.2s,box-shadow 0.2s",cursor:"pointer"}}
+      onClick={()=>onReadMore&&onReadMore(article)}
       onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=isEchi?"0 8px 24px rgba(0,0,0,0.4)":"0 8px 24px rgba(0,0,0,0.08)"}}
       onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none"}}>
       <div style={{height:3,background:sc?.color||AC}}/>
@@ -76,9 +82,12 @@ function ArticleCard({article,featured}){
         <h3 style={{fontFamily:"'Orbitron'",fontSize:featured?20:16,fontWeight:700,color:isEchi?"#E8E4DE":TX,lineHeight:1.35,marginBottom:8}}>{article.title}</h3>
         {article.subtitle&&<p style={{fontSize:featured?15:13,color:isEchi?"#8899AA":TS,fontStyle:"italic",lineHeight:1.5,marginBottom:12}}>{article.subtitle}</p>}
         <p style={{fontSize:14,color:isEchi?"#7A8A98":TS,lineHeight:1.8,marginBottom:16,display:"-webkit-box",WebkitLineClamp:featured?6:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.body}</p>
-        {links.length>0&&<div style={{padding:"12px 14px",background:isEchi?"#0D151F":LIGHT,borderRadius:8,marginBottom:14}}>
+        {prevArticles.length>0&&<div style={{padding:"12px 14px",background:isEchi?"#0D151F":LIGHT,borderRadius:8,marginBottom:14}}>
           <div style={{fontSize:9,fontFamily:"'Orbitron'",letterSpacing:1.5,color:TD,marginBottom:8,textTransform:"uppercase"}}>Leggi anche</div>
-          {links.map((l,i)=><div key={i} style={{fontSize:13,marginBottom:i<links.length-1?5:0,lineHeight:1.4}}><span style={{color:AC,fontWeight:600}}>{l.title}</span>{l.description&&<span style={{color:isEchi?"#667788":TD,marginLeft:6}}>— {l.description}</span>}</div>)}
+          {prevArticles.map((a,i)=><div key={a.id} onClick={e=>{e.stopPropagation();onReadMore&&onReadMore(a)}} style={{fontSize:13,marginBottom:i<prevArticles.length-1?5:0,lineHeight:1.4,cursor:"pointer"}}>
+            <span style={{color:AC,fontWeight:600}}>{a.title}</span>
+            <span style={{color:isEchi?"#667788":TD,marginLeft:6}}>— {fShort(a.published_at)}</span>
+          </div>)}
         </div>}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11,color:isEchi?"#556677":TD,fontFamily:"'Orbitron'",letterSpacing:.5}}>
           <span>{article.author}</span><span>{article.published_at?fDate(article.published_at):""}</span>
@@ -88,18 +97,171 @@ function ArticleCard({article,featured}){
   );
 }
 
+// ── Articolo completo ──
+function ArticleFull({article,allArticles,onBack,onReadMore}){
+  const sc=SECTIONS.find(s=>s.id===article.section);
+  const isEchi=article.section==="echi";
+  const prevArticles = (allArticles||[])
+    .filter(a => a.section === article.section && a.id !== article.id)
+    .sort((a,b) => new Date(b.published_at) - new Date(a.published_at))
+    .slice(0,2);
+
+  return(
+    <div style={{maxWidth:720,margin:"0 auto",padding:"36px 20px 48px",animation:"fadeUp 0.4s ease"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:AC,fontSize:13,fontWeight:600,cursor:"pointer",marginBottom:24,display:"flex",alignItems:"center",gap:6}}>← Torna alla homepage</button>
+      <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:10,fontFamily:"'Orbitron'",fontWeight:600,color:sc?.color,letterSpacing:1.2,textTransform:"uppercase",marginBottom:16}}>
+        <span style={{fontSize:14}}>{sc?.icon}</span> {sc?.name}
+      </div>
+      <h1 style={{fontFamily:"'Orbitron'",fontSize:28,fontWeight:800,color:TX,lineHeight:1.3,marginBottom:10}}>{article.title}</h1>
+      {article.subtitle&&<p style={{fontSize:17,color:TS,fontStyle:"italic",lineHeight:1.5,marginBottom:16}}>{article.subtitle}</p>}
+      <div style={{display:"flex",alignItems:"center",gap:16,fontSize:12,color:TD,marginBottom:32,paddingBottom:16,borderBottom:`1px solid ${BD}`}}>
+        <span style={{fontWeight:600,color:TS}}>{article.author}</span>
+        <span>{article.published_at?fDate(article.published_at):""}</span>
+      </div>
+      <div style={{fontSize:16,color:TX,lineHeight:2,whiteSpace:"pre-wrap",marginBottom:40}}>{article.body}</div>
+      {prevArticles.length>0&&<div style={{padding:"20px 24px",background:LIGHT,borderRadius:12,border:`1px solid ${BD}`}}>
+        <div style={{fontSize:10,fontFamily:"'Orbitron'",letterSpacing:1.5,color:TD,marginBottom:12,textTransform:"uppercase"}}>Leggi anche in {sc?.name}</div>
+        {prevArticles.map((a,i)=><div key={a.id} onClick={()=>onReadMore(a)} style={{padding:"12px 0",borderBottom:i<prevArticles.length-1?`1px solid ${BD}`:"none",cursor:"pointer"}}>
+          <div style={{fontSize:15,fontWeight:600,color:TX,marginBottom:3}}>{a.title}</div>
+          <div style={{fontSize:12,color:TD}}>{fShort(a.published_at)}</div>
+        </div>)}
+      </div>}
+    </div>
+  );
+}
+
+// ── Pagina Chi siamo ──
+function ChiSiamo({onBack,settings}){
+  return(
+    <div style={{maxWidth:720,margin:"0 auto",padding:"48px 20px",animation:"fadeUp 0.4s ease"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:AC,fontSize:13,fontWeight:600,cursor:"pointer",marginBottom:32,display:"flex",alignItems:"center",gap:6}}>← Torna alla homepage</button>
+      <h1 style={{fontFamily:"'Orbitron'",fontSize:28,fontWeight:800,color:TX,letterSpacing:2,marginBottom:32}}>Chi siamo</h1>
+
+      <div style={{background:CARD,borderRadius:12,border:`1px solid ${BD}`,padding:32,marginBottom:32}}>
+        <h2 style={{fontFamily:"'Orbitron'",fontSize:16,fontWeight:700,color:AC,letterSpacing:1,marginBottom:16}}>Il progetto</h2>
+        <p style={{fontSize:15,color:TS,lineHeight:1.9}}>{settings.project_description||"La Specola nasce dall'idea di osservare il presente con gli strumenti dell'analisi e del rigore. Ogni sera, quattro editoriali su attualità, motori, tecnologia e storia offrono al lettore una bussola per orientarsi nel flusso delle notizie. Non cronaca, ma analisi. Non opinioni urlate, ma ragionamenti argomentati."}</p>
+      </div>
+
+      <div style={{background:CARD,borderRadius:12,border:`1px solid ${BD}`,padding:32,display:"flex",gap:28,alignItems:"flex-start",flexWrap:"wrap"}}>
+        <div style={{width:100,height:100,borderRadius:"50%",background:`linear-gradient(135deg,${AC},#B8860B)`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:36,fontWeight:900,color:"#fff",flexShrink:0}}>FP</div>
+        <div style={{flex:1,minWidth:240}}>
+          <h2 style={{fontFamily:"'Orbitron'",fontSize:16,fontWeight:700,color:AC,letterSpacing:1,marginBottom:8}}>L'editore</h2>
+          <h3 style={{fontSize:20,fontWeight:700,color:TX,marginBottom:12}}>{settings.editor_name||"Francesco Pasquale"}</h3>
+          <p style={{fontSize:15,color:TS,lineHeight:1.9}}>{settings.editor_bio||"Analista e osservatore del presente. Appassionato di tecnologia, motori e storia, crede che comprendere il passato sia il modo migliore per leggere il futuro."}</p>
+        </div>
+      </div>
+
+      <div style={{marginTop:32,padding:"16px 20px",background:LIGHT,borderRadius:8,fontSize:12,color:TD,lineHeight:1.6}}>
+        Blog di analisi e commento — non costituisce testata giornalistica registrata ai sensi della L. 62/2001. I contenuti rappresentano opinioni dell'autore e non hanno finalità informativa in senso stretto.
+      </div>
+    </div>
+  );
+}
+
+// ── Pagina Archivio ──
+function Archivio({articles,onBack,onReadMore}){
+  const grouped={};
+  articles.forEach(a=>{
+    const d=a.edition_date||a.published_at?.split("T")[0]||"sconosciuto";
+    if(!grouped[d])grouped[d]=[];
+    grouped[d].push(a);
+  });
+  const dates=Object.keys(grouped).sort((a,b)=>b.localeCompare(a));
+
+  return(
+    <div style={{maxWidth:720,margin:"0 auto",padding:"48px 20px",animation:"fadeUp 0.4s ease"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:AC,fontSize:13,fontWeight:600,cursor:"pointer",marginBottom:32,display:"flex",alignItems:"center",gap:6}}>← Torna alla homepage</button>
+      <h1 style={{fontFamily:"'Orbitron'",fontSize:28,fontWeight:800,color:TX,letterSpacing:2,marginBottom:32}}>Archivio</h1>
+
+      {dates.length===0?<p style={{color:TD,fontSize:14}}>Nessun articolo in archivio.</p>
+      :dates.map(d=>(
+        <div key={d} style={{marginBottom:32}}>
+          <div style={{fontSize:12,fontFamily:"'Orbitron'",letterSpacing:1.5,color:AC,textTransform:"uppercase",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:AC}}/>
+            {fDate(d)}
+            <span style={{flex:1,height:1,background:BD}}/>
+          </div>
+          {grouped[d].map(a=>{
+            const sc=SECTIONS.find(s=>s.id===a.section);
+            return(
+              <div key={a.id} onClick={()=>onReadMore(a)} style={{background:CARD,borderRadius:10,padding:"14px 18px",border:`1px solid ${BD}`,marginBottom:6,cursor:"pointer",transition:"all 0.15s",borderLeft:`3px solid ${sc?.color||BD}`}}
+                onMouseEnter={e=>e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.06)"}
+                onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,fontFamily:"'Orbitron'",fontWeight:600,color:sc?.color}}>{sc?.icon} {sc?.name}</span>
+                </div>
+                <div style={{fontSize:15,fontWeight:700,color:TX,lineHeight:1.4}}>{a.title}</div>
+                {a.subtitle&&<div style={{fontSize:13,color:TS,fontStyle:"italic",marginTop:3}}>{a.subtitle}</div>}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Footer ──
+function Footer({onChiSiamo}){
+  return(
+    <footer style={{background:DARK,padding:"40px 20px 28px",color:"#6A7A8A"}}>
+      <div style={{maxWidth:960,margin:"0 auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:24,borderBottom:"1px solid #1A2D42",flexWrap:"wrap",gap:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${AC},#B8860B)`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:18,fontWeight:900,color:"#fff",boxShadow:`0 0 16px ${AC}44`}}>S</div>
+            <div><div style={{fontFamily:"'Orbitron'",fontSize:18,fontWeight:800,color:"#E8E4DE",letterSpacing:3}}>LA SPECOLA</div><div style={{fontSize:12,fontStyle:"italic",color:"#556677"}}>Osservare oggi per comprendere il domani</div></div>
+          </div>
+          <div style={{display:"flex",gap:16,alignItems:"center"}}>
+            {["instagram","facebook","x","linkedin","youtube"].map(pl=><a key={pl} href="#" style={{color:"#556677",transition:"color 0.2s",display:"flex",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.color=AC} onMouseLeave={e=>e.currentTarget.style.color="#556677"}><SocialIcon platform={pl}/></a>)}
+          </div>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:20,flexWrap:"wrap",gap:10,fontSize:11,color:"#445566"}}>
+          <div>Blog di analisi e commento — non costituisce testata giornalistica registrata</div>
+          <div style={{display:"flex",gap:20}}><a href="#" style={{color:"#556677"}}>Privacy</a><a href="#" style={{color:"#556677"}}>Cookie</a><a href="#" onClick={e=>{e.preventDefault();onChiSiamo()}} style={{color:"#556677",cursor:"pointer"}}>Chi siamo</a></div>
+        </div>
+        <div style={{textAlign:"center",marginTop:20,fontSize:10,color:"#334455",fontFamily:"'Orbitron'",letterSpacing:1}}>© {new Date().getFullYear()} La Specola · Francesco Pasquale</div>
+      </div>
+    </footer>
+  );
+}
+
+// ══════════════════════════════════════
+//  MAIN APP
+// ══════════════════════════════════════
+
 export default function HomePage(){
   const [articles,setArticles]=useState([]);
+  const [settings,setSettings]=useState({});
   const [loading,setLoading]=useState(true);
   const [sec,setSec]=useState("all");
+  const [page,setPage]=useState("home"); // home | article | chi-siamo | archivio
+  const [currentArticle,setCurrentArticle]=useState(null);
 
   useEffect(()=>{
-    getSupabase().from("articles").select("*").eq("status","published").order("published_at",{ascending:false})
-      .then(({data})=>{setArticles(data||[]);setLoading(false);});
+    const sb=getSupabase();
+    Promise.all([
+      sb.from("articles").select("*").eq("status","published").order("published_at",{ascending:false}),
+      sb.from("site_settings").select("*")
+    ]).then(([artRes,setRes])=>{
+      setArticles(artRes.data||[]);
+      const s={};(setRes.data||[]).forEach(r=>s[r.key]=r.value);
+      setSettings(s);
+      setLoading(false);
+    });
   },[]);
 
   const shown=sec==="all"?articles:articles.filter(a=>a.section===sec);
   const today=fDate(new Date());
+
+  const goArticle=(a)=>{setCurrentArticle(a);setPage("article");window.scrollTo(0,0)};
+  const goHome=()=>{setPage("home");setCurrentArticle(null);window.scrollTo(0,0)};
+  const goChiSiamo=()=>{setPage("chi-siamo");window.scrollTo(0,0)};
+  const goArchivio=()=>{setPage("archivio");window.scrollTo(0,0)};
+
+  // ── Chi siamo / Archivio / Article pages ──
+  if(page==="chi-siamo")return(<div style={{minHeight:"100vh"}}><ChiSiamo onBack={goHome} settings={settings}/><Footer onChiSiamo={goChiSiamo}/></div>);
+  if(page==="archivio")return(<div style={{minHeight:"100vh"}}><Archivio articles={articles} onBack={goHome} onReadMore={goArticle}/><Footer onChiSiamo={goChiSiamo}/></div>);
+  if(page==="article"&&currentArticle)return(<div style={{minHeight:"100vh"}}><ArticleFull article={currentArticle} allArticles={articles} onBack={goHome} onReadMore={goArticle}/><Footer onChiSiamo={goChiSiamo}/></div>);
 
   return(
     <div style={{minHeight:"100vh"}}>
@@ -114,15 +276,15 @@ export default function HomePage(){
       </div>
 
       {/* NAV */}
-      <nav style={{display:"flex",alignItems:"center",justifyContent:"center",gap:0,background:CARD,borderBottom:`1px solid ${BD}`,position:"sticky",top:0,zIndex:10,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+      <nav style={{display:"flex",alignItems:"center",justifyContent:"center",gap:0,background:CARD,borderBottom:`1px solid ${BD}`,position:"sticky",top:0,zIndex:10,boxShadow:"0 2px 8px rgba(0,0,0,0.04)",flexWrap:"wrap"}}>
         {[{id:"all",name:"Tutte",color:AC},...SECTIONS].map(s=>
-          <button key={s.id} onClick={()=>setSec(s.id)} style={{padding:"14px 20px",border:"none",background:"transparent",fontFamily:"'Titillium Web'",fontSize:13,fontWeight:600,color:sec===s.id?s.color:TD,borderBottom:`2px solid ${sec===s.id?s.color:"transparent"}`,cursor:"pointer",transition:"all 0.2s",letterSpacing:.3}}>
+          <button key={s.id} onClick={()=>{setSec(s.id);setPage("home")}} style={{padding:"14px 20px",border:"none",background:"transparent",fontFamily:"'Titillium Web'",fontSize:13,fontWeight:600,color:page==="home"&&sec===s.id?s.color:TD,borderBottom:`2px solid ${page==="home"&&sec===s.id?s.color:"transparent"}`,cursor:"pointer",transition:"all 0.2s",letterSpacing:.3}}>
             {s.id!=="all"&&<span style={{marginRight:5}}>{SECTIONS.find(x=>x.id===s.id)?.icon}</span>}{s.name}
           </button>
         )}
         <div style={{width:1,height:20,background:BD,margin:"0 8px"}}/>
-        <button style={{padding:"14px 16px",border:"none",background:"transparent",fontSize:13,fontWeight:400,color:TD,cursor:"pointer"}}>Archivio</button>
-        <button style={{padding:"14px 16px",border:"none",background:"transparent",fontSize:13,fontWeight:400,color:TD,cursor:"pointer"}}>Chi siamo</button>
+        <button onClick={goArchivio} style={{padding:"14px 16px",border:"none",background:"transparent",fontSize:13,fontWeight:page==="archivio"?600:400,color:page==="archivio"?AC:TD,cursor:"pointer",borderBottom:`2px solid ${page==="archivio"?AC:"transparent"}`}}>Archivio</button>
+        <button onClick={goChiSiamo} style={{padding:"14px 16px",border:"none",background:"transparent",fontSize:13,fontWeight:page==="chi-siamo"?600:400,color:page==="chi-siamo"?AC:TD,cursor:"pointer",borderBottom:`2px solid ${page==="chi-siamo"?AC:"transparent"}`}}>Chi siamo</button>
       </nav>
 
       {/* CONTENT */}
@@ -130,8 +292,8 @@ export default function HomePage(){
         {loading?<div style={{textAlign:"center",padding:"60px 20px",color:TD}}><div style={{fontFamily:"'Orbitron'",fontSize:14,letterSpacing:2}}>Caricamento edizione...</div></div>
         :shown.length===0?<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:48,marginBottom:16,opacity:.2}}>📜</div><div style={{fontFamily:"'Orbitron'",fontSize:14,color:TS,marginBottom:8}}>Nessun articolo pubblicato</div><div style={{fontSize:13,color:TD}}>L'edizione odierna sarà disponibile in serata</div></div>
         :<>
-          {shown.length>0&&<div style={{marginBottom:32,animation:"fadeUp 0.6s ease"}}><ArticleCard article={shown[0]} featured/></div>}
-          {shown.length>1&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:20}}>{shown.slice(1).map((a,i)=><div key={a.id} style={{animation:`fadeUp 0.5s ease ${0.1*(i+1)}s both`}}><ArticleCard article={a}/></div>)}</div>}
+          {shown.length>0&&<div style={{marginBottom:32,animation:"fadeUp 0.6s ease"}}><ArticleCard article={shown[0]} featured allArticles={articles} onReadMore={goArticle}/></div>}
+          {shown.length>1&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:20}}>{shown.slice(1).map((a,i)=><div key={a.id} style={{animation:`fadeUp 0.5s ease ${0.1*(i+1)}s both`}}><ArticleCard article={a} allArticles={articles} onReadMore={goArticle}/></div>)}</div>}
         </>}
       </main>
 
@@ -145,25 +307,7 @@ export default function HomePage(){
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer style={{background:DARK,padding:"40px 20px 28px",color:"#6A7A8A"}}>
-        <div style={{maxWidth:960,margin:"0 auto"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:24,borderBottom:"1px solid #1A2D42",flexWrap:"wrap",gap:16}}>
-            <div style={{display:"flex",alignItems:"center",gap:14}}>
-              <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${AC},#B8860B)`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:18,fontWeight:900,color:"#fff",boxShadow:`0 0 16px ${AC}44`}}>S</div>
-              <div><div style={{fontFamily:"'Orbitron'",fontSize:18,fontWeight:800,color:"#E8E4DE",letterSpacing:3}}>LA SPECOLA</div><div style={{fontSize:12,fontStyle:"italic",color:"#556677"}}>Osservare oggi per comprendere il domani</div></div>
-            </div>
-            <div style={{display:"flex",gap:16,alignItems:"center"}}>
-              {["instagram","facebook","x","linkedin","youtube"].map(pl=><a key={pl} href="#" style={{color:"#556677",transition:"color 0.2s",display:"flex",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.color=AC} onMouseLeave={e=>e.currentTarget.style.color="#556677"}><SocialIcon platform={pl}/></a>)}
-            </div>
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:20,flexWrap:"wrap",gap:10,fontSize:11,color:"#445566"}}>
-            <div>Blog di analisi e commento — non costituisce testata giornalistica registrata ai sensi della L. 62/2001</div>
-            <div style={{display:"flex",gap:20}}><a href="#" style={{color:"#556677"}}>Privacy</a><a href="#" style={{color:"#556677"}}>Cookie</a><a href="#" style={{color:"#556677"}}>Chi siamo</a></div>
-          </div>
-          <div style={{textAlign:"center",marginTop:20,fontSize:10,color:"#334455",fontFamily:"'Orbitron'",letterSpacing:1}}>© {new Date().getFullYear()} La Specola · Francesco Pasquale</div>
-        </div>
-      </footer>
+      <Footer onChiSiamo={goChiSiamo}/>
     </div>
   );
 }
