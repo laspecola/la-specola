@@ -112,7 +112,7 @@ function AdminApp({password}){
 
     const pj=(t)=>{let c=t.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();const fb=c.search(/[\[{]/);if(fb>0)c=c.substring(fb);const lb=Math.max(c.lastIndexOf("}"),c.lastIndexOf("]"));if(lb>0)c=c.substring(0,lb+1);try{return JSON.parse(c)}catch{}const m=c.match(/\[[\s\S]*\]/);if(m)try{return JSON.parse(m[0])}catch{}return null};
     const parseArt=(t,ft)=>{const tag=n=>{const m=t.match(new RegExp(`<${n}>([\\s\\S]*?)</${n}>`,"i"));return m?m[1].trim():""};const b=tag("CORPO");if(b){const l1=tag("LINK1"),l2=tag("LINK2");const pl=r=>{if(!r)return null;const p=r.split("|||").map(s=>s.trim());return p.length>=2?{title:p[0],description:p[1]}:{title:r,description:""}};return{title:tag("TITOLO")||ft,subtitle:tag("SOTTOTITOLO"),body:b.replace(/^di\s+Francesco\s+Pasquale\s*/i,"").trim(),links:[pl(l1),pl(l2)].filter(Boolean)}}const p=pj(t);if(p&&p.body)return{title:p.title||ft,subtitle:p.subtitle||"",body:p.body.replace(/^di\s+Francesco\s+Pasquale\s*/i,"").trim(),links:p.links||[]};return{title:ft,subtitle:"",body:t.replace(/^di\s+Francesco\s+Pasquale\s*/i,"").trim(),links:[]}};
-    const artPrompt=`\nUSA ESATTAMENTE QUESTO FORMATO nella risposta:\n<TITOLO>Titolo dell'editoriale</TITOLO>\n<SOTTOTITOLO>Sottotitolo breve</SOTTOTITOLO>\n<CORPO>\nTesto completo 800-1000 parole, solo prosa, nessuna firma, nessun cliché.\n</CORPO>\n<LINK1>Titolo primo link correlato ||| Breve descrizione</LINK1>\n<LINK2>Titolo secondo link correlato ||| Breve descrizione</LINK2>`;
+    const artPrompt=`\nUSA ESATTAMENTE QUESTO FORMATO nella risposta:\n<TITOLO>Titolo dell'editoriale</TITOLO>\n<SOTTOTITOLO>Sottotitolo breve</SOTTOTITOLO>\n<CORPO>\nTesto completo 800-1000 parole, solo prosa, nessuna firma, nessun cliché.\n</CORPO>`;
 
     // ── PROMPT: titoli per sezioni normali ──
     const startRegular=async()=>{
@@ -178,24 +178,115 @@ Rispondi SOLO con JSON array:
       }
       const dataOggi = todayIT();
       const sectionPrompts = {
-        attualita: `Agisci come un editorialista esperto di una rivista di approfondimento. Scrivi un articolo in italiano su "${tObj.title}" con tono sobrio, analitico e autorevole. Il testo deve risultare credibile, maturo e ben argomentato. Parti dai fatti verificabili, separa con chiarezza fatti, dichiarazioni, incertezze e analisi. Evita enfasi, moralismi, slogan, retorica facile, immagini giornalistiche abusate e conclusioni troppo forti rispetto agli elementi disponibili. Non scrivere per impressionare, ma per spiegare. Costruisci un ragionamento progressivo, ordinato e denso, evidenziando contraddizioni, implicazioni e limiti. Chiudi con una conclusione riflessiva ma non sentenziosa.`,
-        motori: `Agisci come un editorialista esperto del settore automotive e motociclistico. Scrivi un articolo in italiano su "${tObj.title}" con tono autorevole, sobrio e analitico, adatto a una rubrica su moto, auto e motori. Parti dai fatti verificabili, separa chiaramente dati tecnici, dichiarazioni, aspetti incerti e interpretazioni. Evita toni promozionali, entusiasmi da comunicato stampa, slogan, hype e retorica da recensione emotiva. Spiega il significato concreto della notizia per utenti, mercato, tecnologia, sicurezza, costi, normativa e utilizzo reale, quando pertinenti. Costruisci l'analisi in modo progressivo e concludi con una riflessione misurata, non sensazionalistica.`,
-        tecnologia: `Agisci come un editorialista esperto di tecnologia e innovazione. Scrivi un articolo in italiano su "${tObj.title}" con tono autorevole, sobrio e analitico, adatto a una rubrica dedicata alla tecnologia. Parti dai fatti verificabili, separa chiaramente dati, dichiarazioni, aspetti incerti e interpretazioni. Evita toni promozionali, entusiasmi da comunicato stampa, slogan, hype e retorica da "rivoluzione" non dimostrata. Spiega il significato concreto della notizia o del fenomeno per utenti, imprese, mercato, regolazione, sicurezza, uso reale e sviluppo tecnologico, quando pertinenti. Costruisci l'analisi in modo progressivo e concludi con una riflessione misurata, non sensazionalistica.`,
-        echi: `Agisci come un editorialista esperto di storia e attualità. Scrivi un articolo in italiano su "${tObj.title}" con tono autorevole, sobrio e analitico, adatto a una rubrica storica che prende spunto da fatti attuali per offrirne una lettura di lungo periodo. Parti dai fatti verificabili della notizia, separa chiaramente dati, dichiarazioni, aspetti incerti e interpretazioni. Collega poi l'evento presente a precedenti storici pertinenti, usando il paragone storico come strumento di comprensione e non come artificio retorico. Evita anacronismi, analogie forzate, semplificazioni, moralismi, slogan e toni enfatici. Non presentare il passato come una replica del presente: evidenzia invece somiglianze, differenze, limiti del confronto e specificità del contesto storico. Spiega che cosa la prospettiva storica aiuta a comprendere meglio della notizia attuale, costruisci l'analisi in modo progressivo e concludi con una riflessione misurata, non sentenziosa.`
+        attualita: `Sei un editorialista senior di una rivista italiana di approfondimento politico-economico. Scrivi un articolo su "${tObj.title}".
+
+STRUTTURA OBBLIGATORIA DELL'ARTICOLO:
+
+PARAGRAFO 1 — L'APERTURA (80-100 parole): Presenta il fatto centrale con precisione chirurgica. Data, luogo, protagonisti, cosa è successo. Nessuna retorica, nessun commento. Solo il fatto nudo, scritto in modo che il lettore capisca immediatamente di cosa si parla.
+
+PARAGRAFO 2 — IL CONTESTO (100-120 parole): Spiega cosa c'era PRIMA di questa notizia. Quali sono i precedenti? Qual era lo stato della questione fino a ieri? Il lettore deve capire perché questa notizia è importante e cosa cambia rispetto alla situazione precedente.
+
+PARAGRAFO 3 — LE POSIZIONI IN CAMPO (120-150 parole): Chi dice cosa? Riporta le dichiarazioni e le posizioni dei protagonisti. Evidenzia le contraddizioni tra le versioni. Non prendere posizione, esponi i fatti e lascia che le contraddizioni parlino da sole.
+
+PARAGRAFO 4 — L'ANALISI (150-180 parole): Questa è la parte più importante. Spiega PERCHÉ le cose stanno così. Quali sono gli interessi in gioco? Quali le pressioni non dette? Quali i calcoli politici o economici dietro le dichiarazioni ufficiali? Usa dati, numeri, precedenti storici. Qui il lettore deve trovare qualcosa che non ha letto altrove.
+
+PARAGRAFO 5 — LE IMPLICAZIONI (100-120 parole): Cosa succede adesso? Quali sono gli scenari possibili? Cosa rischia chi? Chi guadagna? Non fare previsioni azzardate, ma indica le variabili da osservare.
+
+PARAGRAFO 6 — LA CHIUSURA (80-100 parole): Una riflessione sobria che sintetizzi la tesi dell'articolo. NON una frase a effetto. Una conclusione che il lettore possa portarsi via come chiave di lettura. Deve contenere un'idea precisa, non un sentimento vago.
+
+TOTALE: minimo 800 parole, ideale 900.
+
+TONO: Sobrio, analitico, mai enfatico. Scrivi come chi conosce bene la materia e la spiega a un lettore intelligente. Mai moralismi, mai slogan, mai cliché giornalistici ("passerà alla storia", "è un fatto epocale", "il tempo dirà"). Separa sempre i fatti dalle opinioni. Quando analizzi, argomenta. Quando concludi, abbi una tesi.`,
+
+        motori: `Sei un editorialista senior del settore automotive e motociclistico. Scrivi un articolo su "${tObj.title}".
+
+STRUTTURA OBBLIGATORIA DELL'ARTICOLO:
+
+PARAGRAFO 1 — IL FATTO (80-100 parole): Cosa è stato annunciato, presentato, lanciato o deciso. Dati tecnici essenziali: modello, motorizzazione, prezzo, data di disponibilità se pertinenti. Nessun entusiasmo da comunicato stampa.
+
+PARAGRAFO 2 — IL CONTESTO DI MERCATO (100-120 parole): Dove si colloca questa notizia nel panorama attuale. Cosa fanno i concorrenti. Come sta andando quel segmento di mercato. Dati di vendita se disponibili.
+
+PARAGRAFO 3 — L'ANALISI TECNICA (120-150 parole): Cosa significa concretamente per chi guida, compra o usa. Vantaggi reali, limiti dichiarati e non dichiarati, confronto con le alternative. Se è un'innovazione, spiega cosa cambia davvero nella pratica quotidiana.
+
+PARAGRAFO 4 — NORMATIVA E COSTI (100-120 parole): Impatto su incentivi, normative emissioni, costi di gestione, assicurazione, manutenzione. L'aspetto economico concreto che interessa a chi deve decidere un acquisto.
+
+PARAGRAFO 5 — SCENARIO E TENDENZE (100-120 parole): Dove va il settore. Questa notizia conferma o contraddice una tendenza? Quali altri costruttori seguiranno? Cosa aspettarsi nei prossimi 12-18 mesi.
+
+PARAGRAFO 6 — CHIUSURA (80-100 parole): Giudizio misurato sul significato complessivo della notizia. Non entusiasmo, non stroncatura, ma un'opinione fondata sui fatti esposti.
+
+TOTALE: minimo 800 parole.
+
+TONO: Competente, concreto, mai promozionale. Scrivi per chi deve capire, non per chi vuole sognare. Zero hype, zero "rivoluzione", zero "game changer". I fatti e i numeri parlano da soli.`,
+
+        tecnologia: `Sei un editorialista senior specializzato in tecnologia e innovazione. Scrivi un articolo su "${tObj.title}".
+
+STRUTTURA OBBLIGATORIA DELL'ARTICOLO:
+
+PARAGRAFO 1 — IL FATTO (80-100 parole): Cosa è stato annunciato, rilasciato, scoperto o regolamentato. Chi l'ha fatto, quando, in che contesto. Dati specifici: versioni, prestazioni, disponibilità, costi.
+
+PARAGRAFO 2 — COME FUNZIONA (100-120 parole): Spiegazione tecnica accessibile. Non banalizzare, ma rendila comprensibile a un lettore colto non specialista. Cosa fa concretamente? Come si differenzia da ciò che esisteva prima?
+
+PARAGRAFO 3 — IMPATTO REALE (120-150 parole): Chi ne beneficia e chi ne è minacciato. Effetti su utenti, aziende, lavoratori, privacy, sicurezza. Distingui tra ciò che è reale ora e ciò che è promessa futura.
+
+PARAGRAFO 4 — IL QUADRO COMPETITIVO (100-120 parole): Cosa fanno i concorrenti. Come reagisce il mercato. Ci sono brevetti, cause, regolamenti in gioco? Questa tecnologia è un'evoluzione o una discontinuità?
+
+PARAGRAFO 5 — RISCHI E LIMITI (100-120 parole): Cosa può andare storto. Quali sono i limiti tecnici non detti. Ci sono rischi etici, di sicurezza, di concentrazione di mercato? Non fare l'avvocato del diavolo per principio, ma esponi i lati critici reali.
+
+PARAGRAFO 6 — CHIUSURA (80-100 parole): Sintesi del significato della notizia nel contesto più ampio dell'innovazione. Tesi precisa, non retorica.
+
+TOTALE: minimo 800 parole.
+
+TONO: Informato, preciso, mai entusiasta. Zero "rivoluzione", "svolta epocale", "cambierà tutto". Se è importante, i fatti lo dimostreranno senza bisogno di aggettivi.`,
+
+        echi: `Sei un editorialista esperto di storia contemporanea. Scrivi un articolo su "${tObj.title}" che colleghi un fatto attuale a un precedente storico.
+
+STRUTTURA OBBLIGATORIA DELL'ARTICOLO:
+
+PARAGRAFO 1 — LA NOTIZIA DI OGGI (80-100 parole): Il fatto attuale da cui parti. Cosa è successo, quando, chi sono i protagonisti. Scrivi come se il lettore non avesse letto i giornali oggi.
+
+PARAGRAFO 2 — IL PARALLELO STORICO (120-150 parole): Presenta il fatto storico con cui costruisci il confronto. Date precise, nomi, luoghi, contesto dell'epoca. Il lettore deve capire cosa accadde allora con la stessa chiarezza con cui ha capito cosa succede oggi.
+
+PARAGRAFO 3 — LE SOMIGLIANZE (100-120 parole): Cosa accomuna i due eventi. Dinamiche simili, errori ripetuti, meccanismi analoghi. Sii specifico: non "la storia si ripete" in astratto, ma mostra concretamente cosa si ripete e perché.
+
+PARAGRAFO 4 — LE DIFFERENZE (100-120 parole): Cosa è diverso. Contesto geopolitico, tecnologico, sociale. Questa parte è cruciale: impedisce al paragone di diventare una forzatura. Il lettore deve capire i limiti del confronto.
+
+PARAGRAFO 5 — COSA CI INSEGNA (120-150 parole): Quale lezione concreta si può trarre. Non moralismi vaghi ("la storia insegna"), ma indicazioni precise: cosa funzionò allora e potrebbe funzionare oggi, cosa fallì e rischia di fallire di nuovo.
+
+PARAGRAFO 6 — CHIUSURA (80-100 parole): Riflessione sobria su cosa la prospettiva storica aggiunge alla comprensione del presente. Una tesi precisa, non una sentenza.
+
+TOTALE: minimo 800 parole.
+
+TONO: Colto ma accessibile, mai professorale. La storia è uno strumento di comprensione, non di esibizione culturale. Evita anacronismi e analogie forzate.`
       };
 
-      const promptArticolo = `Oggi è il ${dataOggi}. Cerca sul web i dettagli aggiornati e approfonditi sulla notizia.
+      const promptArticolo = `Oggi è il ${dataOggi}. CERCA SUL WEB i dettagli aggiornati e approfonditi sulla notizia prima di scrivere.
 
 ${sectionPrompts[sec] || sectionPrompts.attualita}
 
 Taglio editoriale: ${tObj.angle}${ctx}
 ${focus.trim() ? "Focus specifico: " + focus : ""}
 
-REGOLE TECNICHE:
-- MINIMO 800 parole, ideale 900-1000. NON scrivere meno di 800 parole.
-- NON includere la firma "di Francesco Pasquale" nel testo — è gestita dal sistema.
-- NON inventare fatti: basati SOLO su notizie reali verificate tramite web search.
-- Suggerisci 2 titoli di articoli correlati dei giorni scorsi con breve descrizione.
+REGOLE ASSOLUTE:
+- MINIMO 800 parole. Se scrivi meno di 800 parole, l'articolo è INSUFFICIENTE.
+- NON includere la firma "di Francesco Pasquale" — è gestita dal sistema.
+- NON inventare fatti: basati SOLO su notizie reali verificate.
+- Segui la struttura a 6 paragrafi indicata sopra.
+
+VINCOLI DI RIGORE ANALITICO — FONDAMENTALI:
+
+1. INTENZIONI E STRATEGIE: Non attribuire ai leader intenzioni, strategie o calcoli politici come fatti acquisiti, salvo che tali intenzioni risultino da dichiarazioni esplicite o da elementi oggettivi chiaramente esposti nel testo. Quando proponi un'interpretazione, segnala esplicitamente che si tratta di una lettura possibile e non di un dato certo. Formulazioni come "Meloni sceglie strategicamente", "il governo ha saputo leggere il momento", "la mossa rivela la maturità geopolitica" sono VIETATE se non dimostrate da fatti espliciti.
+
+2. LINGUAGGIO RIVELATORIO: Evita frasi con struttura rivelatoria o allusiva come "dietro le quinte", "si cela", "in realtà", "il vero significato", "ciò che non viene detto", salvo che il testo dimostri in modo puntuale ciò che afferma. Se non hai prove, non suggerire misteri.
+
+3. CHIUSURE: Non usare chiuse aforistiche, sloganistiche o ad effetto. La conclusione DEVE derivare logicamente dall'analisi e restare proporzionata agli elementi disponibili. Vietate formule come "America alone", "la storia insegna", "il tempo dirà", "è questa la vera lezione". La chiusura deve essere una sintesi argomentata, non una battuta.
+
+4. SEPARAZIONE FATTO/INFERENZA/GIUDIZIO: Distingui sempre tra ciò che è un fatto documentato, ciò che è una tua inferenza ragionevole, e ciò che è un giudizio di valore. Le inferenze vanno introdotte con cautela linguistica ("è plausibile che", "i fatti suggeriscono", "una lettura possibile è"). I giudizi di valore vanno evitati o dichiarati come tali.
+
+5. ATTRITO ARGOMENTATIVO: L'articolo DEVE mettere alla prova la propria tesi. Per ogni interpretazione proposta, esponi almeno un elemento che la contraddice o la limita. Un articolo che conferma la propria tesi dall'inizio alla fine senza mai metterla in discussione non è analisi, è propaganda.
+
+6. TITOLO: Il titolo deve descrivere il problema, non risolverlo. Un titolo che contiene già la conclusione ("quando la crisi diventa opportunità") è un titolo da commento, non da analisi. Preferisci titoli che pongono una domanda implicita o descrivono una tensione irrisolta.
+
+AUTOCONTROLLO FINALE: Prima di consegnare il testo, rileggi ogni paragrafo e riscrivi tutte le frasi che contengono: giudizi politici impliciti, intenzioni attribuite senza prove, causalità non dimostrate, formule retoriche da editoriale, o conclusioni sproporzionate rispetto ai fatti esposti.
 ${artPrompt}`;
 
       try{
@@ -205,7 +296,7 @@ ${artPrompt}`;
       }catch(e){setErr(e.message);setStep("titles")}
     };
 
-    const accept=()=>{if(!result)return;const a={_isNew:true,edition_date:tod(),section:result.section,title:result.title,subtitle:result.subtitle||"",body:result.body,links:result.links||[],status:"draft",author:"Francesco Pasquale"};setEd(a);setView("dashboard");reset()};
+    const accept=()=>{if(!result)return;const a={_isNew:true,edition_date:tod(),section:result.section,title:result.title,subtitle:result.subtitle||"",body:result.body,links:[],status:"draft",author:"Francesco Pasquale"};setEd(a);setView("dashboard");reset()};
     const isLoading=step==="load_titles"||step==="generating";
 
     return(
@@ -234,12 +325,10 @@ ${artPrompt}`;
     const [sub,setSub]=useState(a.subtitle||"");
     const [body,setBody]=useState(a.body||"");
     const [sec,setSec]=useState(a.section||"attualita");
-    const [links,setLinks]=useState(()=>{const l=[...(a.links||parseLinks(a.da_seguire)||[])];while(l.length<2)l.push({title:"",description:""});return l});
     const [saving,setSaving]=useState(false);
     const w=body.trim().split(/\s+/).filter(Boolean).length;
     const sc=SECTIONS.find(x=>x.id===sec);
-    const doSave=async(st)=>{setSaving(true);await saveArt({...a,title,subtitle:sub,body,section:sec,links:links.filter(l=>l.title.trim()),status:st});setSaving(false)};
-    const uL=(i,f,v)=>{const n=[...links];n[i]={...n[i],[f]:v};setLinks(n)};
+    const doSave=async(st)=>{setSaving(true);await saveArt({...a,title,subtitle:sub,body,section:sec,links:[],status:st});setSaving(false)};
     return(
       <div style={{animation:"fadeUp 0.3s ease"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,paddingBottom:16,borderBottom:`1px solid ${BD}`}}>
@@ -249,11 +338,9 @@ ${artPrompt}`;
         <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>{SECTIONS.map(x=><button key={x.id} onClick={()=>setSec(x.id)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${sec===x.id?x.color:BD}`,background:sec===x.id?x.color+"0D":"transparent",color:sec===x.id?x.color:TD,cursor:"pointer",fontWeight:600,fontSize:12}}>{x.icon} {x.name}</button>)}</div>
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titolo" style={{width:"100%",padding:"12px 0",border:"none",borderBottom:`2px solid ${sc?.color||BD}`,background:"transparent",color:TX,fontFamily:"'Orbitron'",fontSize:22,fontWeight:700,outline:"none",marginBottom:12}}/>
         <input value={sub} onChange={e=>setSub(e.target.value)} placeholder="Sottotitolo" style={{width:"100%",padding:"8px 0",border:"none",borderBottom:`1px solid ${BDL}`,background:"transparent",color:TS,fontSize:16,fontStyle:"italic",outline:"none",marginBottom:24}}/>
-        <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Scrivi l'editoriale..." style={{width:"100%",minHeight:320,padding:20,borderRadius:10,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:15,lineHeight:1.85,resize:"vertical",outline:"none",marginBottom:6}}/>
+        <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Scrivi l'editoriale..." style={{width:"100%",minHeight:420,padding:20,borderRadius:10,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:15,lineHeight:1.85,resize:"vertical",outline:"none",marginBottom:6}}/>
         <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginBottom:24,fontSize:11,color:TD,fontFamily:"'Orbitron'"}}><span>{w} parole</span><span style={{color:w>=800&&w<=1100?OK:w>1100?DG:AC}}>{w<800?`mancano ${800-w}`:w>1100?`${w-1100} in eccesso`:"✓ ok"}</span></div>
-        <Lab>Link correlati</Lab>
-        {links.map((l,i)=><div key={i} style={{display:"flex",gap:10,marginBottom:8,padding:12,background:BWM,borderRadius:8,border:`1px solid ${BDL}`}}><span style={{width:24,height:24,borderRadius:"50%",background:AC+"18",color:AC,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,flexShrink:0}}>{i+1}</span><div style={{flex:1}}><input value={l.title} onChange={e=>uL(i,"title",e.target.value)} placeholder="Titolo link" style={{width:"100%",padding:"4px 0",border:"none",background:"transparent",color:TX,fontSize:14,fontWeight:600,outline:"none"}}/><input value={l.description} onChange={e=>uL(i,"description",e.target.value)} placeholder="Descrizione" style={{width:"100%",padding:"2px 0",border:"none",background:"transparent",color:TD,fontSize:13,outline:"none"}}/></div></div>)}
-        <div style={{padding:14,background:BWM,borderRadius:8,border:`1px solid ${BDL}`,display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16}}><div><span style={{fontSize:10,color:TD,fontFamily:"'Orbitron'",letterSpacing:1}}>AUTORE</span><div style={{fontSize:15,color:TX,fontWeight:600,marginTop:2}}>Francesco Pasquale</div></div><div style={{width:38,height:38,borderRadius:"50%",background:`linear-gradient(135deg,${AC},${sc?.color||BD})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#fff"}}>FP</div></div>
+        <div style={{padding:14,background:BWM,borderRadius:8,border:`1px solid ${BDL}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><span style={{fontSize:10,color:TD,fontFamily:"'Orbitron'",letterSpacing:1}}>AUTORE</span><div style={{fontSize:15,color:TX,fontWeight:600,marginTop:2}}>Francesco Pasquale</div></div><div style={{width:38,height:38,borderRadius:"50%",background:`linear-gradient(135deg,${AC},${sc?.color||BD})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#fff"}}>FP</div></div>
       </div>
     );
   }
