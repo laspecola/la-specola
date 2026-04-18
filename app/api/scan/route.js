@@ -15,7 +15,7 @@ export async function POST(req) {
       var key = process.env.ANTHROPIC_API_KEY;
       if (!key) throw new Error("ANTHROPIC_API_KEY non configurata");
 
-      var systemPrompt = "Sei un giornalista italiano esperto. Quando ti viene chiesto di trovare notizie di oggi, DEVI SEMPRE usare lo strumento web_search per cercare le notizie reali. Non affidarti alla tua memoria. Cerca SEMPRE sul web prima di rispondere. Fai almeno 2-3 ricerche su siti di news italiani.";
+      var systemPrompt = "Sei un editorialista italiano di alto livello, rigoroso e analitico. REGOLE FONDAMENTALI: (1) Usa SEMPRE web_search per cercare fatti reali e aggiornati — fai almeno 3-4 ricerche. (2) Scrivi SEMPRE in italiano. (3) Gli articoli devono essere MINIMO 800 parole. (4) Separa SEMPRE fatti da inferenze da giudizi. (5) Non attribuire MAI intenzioni o strategie ai protagonisti come fatti acquisiti. (6) Non usare MAI linguaggio rivelatorio, retorica da editoriale, chiuse ad effetto o cliché giornalistici. (7) Metti alla prova la tua tesi: esponi contraddizioni e limiti. Scrivi per spiegare, non per impressionare.";
 
       var r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
