@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const SECTIONS=[{id:"attualita",name:"Attualità",color:"#1A5276",icon:"🌍",desc:"politica, economia, società, esteri, sport"},{id:"motori",name:"Motori",color:"#C0392B",icon:"🏎️",desc:"auto, moto, mercato automotive, novità, prezzi"},{id:"tecnologia",name:"Tecnologia",color:"#5B3FA0",icon:"⚡",desc:"tech, AI, informatica, innovazione, scienza"},{id:"echi",name:"Echi dal Passato",color:"#6B5B4F",icon:"📜",desc:"fatto storico collegato all'attualità di oggi"}];
+const SECTIONS=[{id:"attualita",name:"Attualità",color:"#1A5276",icon:"🌍",desc:"politica, economia, società, esteri, sport"},{id:"motori",name:"Motori",color:"#C0392B",icon:"🏎️",desc:"auto, moto, mercato automotive, novità, prezzi"},{id:"tecnologia",name:"Tecnologia",color:"#5B3FA0",icon:"⚡",desc:"tech, AI, informatica, innovazione, scienza"},{id:"officina",name:"L'Officina delle Arti",color:"#8E44AD",icon:"🎭",desc:"arte, musica, poesia, teatro, cultura"},{id:"crocevia",name:"Crocevia",color:"#2E86C1",icon:"🧭",desc:"temi trasversali, curiosità, riflessioni fuori rubrica"},{id:"echi",name:"Echi dal Passato",color:"#6B5B4F",icon:"📜",desc:"fatto storico collegato all'attualità di oggi"}];
 const MODELS=[{id:"claude",name:"Claude",icon:"🟣"},{id:"gemini",name:"Gemini",icon:"🔵"},{id:"chatgpt",name:"ChatGPT",icon:"🟢"}];
 const AC="#D4930D",BG="#F5F3EF",BW="#FFFFFF",BWM="#FAF8F5",BD="#E0DCD5",BDL="#EBE8E3",TX="#1A1A1A",TS="#5A5650",TD="#9A9590",DG="#C0392B",OK="#27AE60";
 const ST={draft:{bg:"#F0EDE8",c:"#8A8580",l:"Bozza",d:"○"},published:{bg:"#E8F5E9",c:OK,l:"Pubblicato",d:"●"}};
@@ -239,6 +239,30 @@ STRUTTURA (6 paragrafi):
 4. QUADRO COMPETITIVO (100-120 parole): Concorrenti, brevetti, regolamenti.
 5. RISCHI E LIMITI (100-120 parole): Limiti tecnici, rischi etici.
 6. CHIUSURA (80-100 parole): Tesi precisa.`,
+
+          officina: `Sei un critico culturale e editorialista esperto di arte, musica e poesia.
+
+STRUTTURA (6 paragrafi):
+1. IL FATTO (80-100 parole): Evento culturale, uscita, mostra, concerto, premio, pubblicazione. Chi, cosa, dove, quando.
+2. L'OPERA O L'ARTISTA (120-150 parole): Contestualizzazione dell'opera o dell'artista nel panorama culturale. Percorso, influenze, linguaggio espressivo.
+3. ANALISI CRITICA (150-180 parole): Cosa rende quest'opera o evento significativo. Qualità formali, contenuto, innovazione o continuità. Confronto con opere precedenti o contemporanee.
+4. RICEZIONE E DIBATTITO (100-120 parole): Come è stato accolto dalla critica, dal pubblico, dal mercato. Consensi e dissensi.
+5. CONTESTO CULTURALE (100-120 parole): Cosa dice della cultura contemporanea. Tendenze, trasformazioni nel modo di fruire arte, musica, poesia.
+6. CHIUSURA (80-100 parole): Giudizio misurato sull'importanza dell'evento nel panorama culturale.
+
+TONO: Colto ma accessibile. Passione contenuta, mai entusiasmo acritico. L'arte va spiegata, non celebrata per principio.`,
+
+          crocevia: `Sei un editorialista generalista con interessi trasversali.
+
+STRUTTURA (6 paragrafi):
+1. IL FATTO (80-100 parole): La notizia o il tema. Cosa è successo, perché è interessante, chi riguarda.
+2. IL CONTESTO (100-120 parole): Da dove viene questo tema. Precedenti, evoluzione, perché se ne parla adesso.
+3. I DATI (120-150 parole): Numeri, statistiche, ricerche disponibili. Dimensione concreta del fenomeno.
+4. LE PROSPETTIVE (100-120 parole): Punti di vista diversi. Chi la pensa in un modo, chi nell'altro, perché.
+5. LE IMPLICAZIONI (100-120 parole): Cosa cambia per le persone. Effetti pratici, sociali, economici.
+6. CHIUSURA (80-100 parole): Riflessione che collega il tema a qualcosa di più ampio.
+
+TONO: Curioso, informato, mai superficiale. Trattare temi diversi con lo stesso rigore delle rubriche specializzate.`,
 
           echi: `Sei un editorialista esperto di storia contemporanea.
 
