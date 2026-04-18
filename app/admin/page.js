@@ -333,10 +333,28 @@ ${artPrompt}`;
     const [sub,setSub]=useState(a.subtitle||"");
     const [body,setBody]=useState(a.body||"");
     const [sec,setSec]=useState(a.section||"attualita");
+    const [audioUrl,setAudioUrl]=useState(a.audio_url||"");
+    const [uploading,setUploading]=useState(false);
     const [saving,setSaving]=useState(false);
     const w=body.trim().split(/\s+/).filter(Boolean).length;
     const sc=SECTIONS.find(x=>x.id===sec);
-    const doSave=async(st)=>{setSaving(true);await saveArt({...a,title,subtitle:sub,body,section:sec,links:[],status:st});setSaving(false)};
+    const doSave=async(st)=>{setSaving(true);await saveArt({...a,title,subtitle:sub,body,section:sec,audio_url:audioUrl,links:[],status:st});setSaving(false)};
+
+    const uploadAudio=async(e)=>{
+      const file=e.target.files?.[0];
+      if(!file)return;
+      setUploading(true);
+      try{
+        const fd=new FormData();
+        fd.append("file",file);
+        const r=await fetch("/api/upload",{method:"POST",headers:{"x-admin-password":password},body:fd});
+        const d=await r.json();
+        if(d.error){fl("Errore upload: "+d.error,"err");}
+        else{setAudioUrl(d.url);fl("Audio caricato!");}
+      }catch(err){fl("Errore: "+err.message,"err");}
+      setUploading(false);
+    };
+
     return(
       <div style={{animation:"fadeUp 0.3s ease"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,paddingBottom:16,borderBottom:`1px solid ${BD}`}}>
@@ -348,6 +366,25 @@ ${artPrompt}`;
         <input value={sub} onChange={e=>setSub(e.target.value)} placeholder="Sottotitolo" style={{width:"100%",padding:"8px 0",border:"none",borderBottom:`1px solid ${BDL}`,background:"transparent",color:TS,fontSize:16,fontStyle:"italic",outline:"none",marginBottom:24}}/>
         <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Scrivi l'editoriale..." style={{width:"100%",minHeight:420,padding:20,borderRadius:10,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:15,lineHeight:1.85,resize:"vertical",outline:"none",marginBottom:6}}/>
         <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginBottom:24,fontSize:11,color:TD,fontFamily:"'Orbitron'"}}><span>{w} parole</span><span style={{color:w>=800&&w<=1100?OK:w>1100?DG:AC}}>{w<800?`mancano ${800-w}`:w>1100?`${w-1100} in eccesso`:"✓ ok"}</span></div>
+
+        {/* Audio upload */}
+        <div style={{background:BWM,borderRadius:10,border:`1px solid ${BDL}`,padding:18,marginBottom:16}}>
+          <Lab>🎵 Traccia audio <span style={{color:BD,fontFamily:"'Titillium Web'",textTransform:"none",letterSpacing:0}}>(opzionale)</span></Lab>
+          {audioUrl?<div>
+            <audio controls src={audioUrl} style={{width:"100%",marginBottom:10,borderRadius:8}}/>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontSize:11,color:OK,fontWeight:600}}>✓ Audio caricato</span>
+              <Btn small v="dan" onClick={()=>setAudioUrl("")}>Rimuovi</Btn>
+              <label style={{cursor:"pointer"}}><Btn small v="gh" onClick={()=>{}} style={{pointerEvents:"none"}}>Sostituisci</Btn><input type="file" accept=".mp3,.wav,.ogg,.m4a" onChange={uploadAudio} style={{display:"none"}}/></label>
+            </div>
+          </div>:<div>
+            <label style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"20px",border:`2px dashed ${BD}`,borderRadius:8,cursor:uploading?"wait":"pointer",transition:"all 0.2s",background:BW}}>
+              <input type="file" accept=".mp3,.wav,.ogg,.m4a" onChange={uploadAudio} disabled={uploading} style={{display:"none"}}/>
+              <span style={{fontSize:13,color:uploading?AC:TS}}>{uploading?"Caricamento in corso...":"Clicca per caricare un file audio (MP3, WAV, OGG, M4A)"}</span>
+            </label>
+          </div>}
+        </div>
+
         <div style={{padding:14,background:BWM,borderRadius:8,border:`1px solid ${BDL}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><span style={{fontSize:10,color:TD,fontFamily:"'Orbitron'",letterSpacing:1}}>AUTORE</span><div style={{fontSize:15,color:TX,fontWeight:600,marginTop:2}}>Francesco Pasquale</div></div><div style={{width:38,height:38,borderRadius:"50%",background:`linear-gradient(135deg,${AC},${sc?.color||BD})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#fff"}}>FP</div></div>
       </div>
     );
