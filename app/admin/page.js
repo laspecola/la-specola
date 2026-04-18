@@ -112,7 +112,7 @@ function AdminApp({password}){
 
     const pj=(t)=>{let c=t.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();const fb=c.search(/[\[{]/);if(fb>0)c=c.substring(fb);const lb=Math.max(c.lastIndexOf("}"),c.lastIndexOf("]"));if(lb>0)c=c.substring(0,lb+1);try{return JSON.parse(c)}catch{}const m=c.match(/\[[\s\S]*\]/);if(m)try{return JSON.parse(m[0])}catch{}return null};
     const parseArt=(t,ft)=>{const tag=n=>{const m=t.match(new RegExp(`<${n}>([\\s\\S]*?)</${n}>`,"i"));return m?m[1].trim():""};const b=tag("CORPO");if(b){const l1=tag("LINK1"),l2=tag("LINK2");const pl=r=>{if(!r)return null;const p=r.split("|||").map(s=>s.trim());return p.length>=2?{title:p[0],description:p[1]}:{title:r,description:""}};return{title:tag("TITOLO")||ft,subtitle:tag("SOTTOTITOLO"),body:b.replace(/^di\s+Francesco\s+Pasquale\s*/i,"").trim(),links:[pl(l1),pl(l2)].filter(Boolean)}}const p=pj(t);if(p&&p.body)return{title:p.title||ft,subtitle:p.subtitle||"",body:p.body.replace(/^di\s+Francesco\s+Pasquale\s*/i,"").trim(),links:p.links||[]};return{title:ft,subtitle:"",body:t.replace(/^di\s+Francesco\s+Pasquale\s*/i,"").trim(),links:[]}};
-    const artPrompt=`\nUSA ESATTAMENTE QUESTO FORMATO nella risposta:\n<TITOLO>Titolo dell'editoriale</TITOLO>\n<SOTTOTITOLO>Sottotitolo breve</SOTTOTITOLO>\n<CORPO>\nTesto completo 300-500 parole, solo prosa, nessuna firma.\n</CORPO>\n<LINK1>Titolo primo link correlato ||| Breve descrizione</LINK1>\n<LINK2>Titolo secondo link correlato ||| Breve descrizione</LINK2>`;
+    const artPrompt=`\nUSA ESATTAMENTE QUESTO FORMATO nella risposta:\n<TITOLO>Titolo dell'editoriale</TITOLO>\n<SOTTOTITOLO>Sottotitolo breve</SOTTOTITOLO>\n<CORPO>\nTesto completo 800-1000 parole, solo prosa, nessuna firma, nessun cliché.\n</CORPO>\n<LINK1>Titolo primo link correlato ||| Breve descrizione</LINK1>\n<LINK2>Titolo secondo link correlato ||| Breve descrizione</LINK2>`;
 
     // ── PROMPT: titoli per sezioni normali ──
     const startRegular=async()=>{
@@ -177,19 +177,25 @@ Rispondi SOLO con JSON array:
         ctx="\nArticoli di riferimento della giornata: "+src.map(a=>'"'+a.title+'"').join(", ");
       }
       const dataOggi = todayIT();
-      const promptArticolo = `Oggi è il ${dataOggi}. Sei il redattore de "La Specola", sezione "${s.name}".
+      const sectionPrompts = {
+        attualita: `Agisci come un editorialista esperto di una rivista di approfondimento. Scrivi un articolo in italiano su "${tObj.title}" con tono sobrio, analitico e autorevole. Il testo deve risultare credibile, maturo e ben argomentato. Parti dai fatti verificabili, separa con chiarezza fatti, dichiarazioni, incertezze e analisi. Evita enfasi, moralismi, slogan, retorica facile, immagini giornalistiche abusate e conclusioni troppo forti rispetto agli elementi disponibili. Non scrivere per impressionare, ma per spiegare. Costruisci un ragionamento progressivo, ordinato e denso, evidenziando contraddizioni, implicazioni e limiti. Chiudi con una conclusione riflessiva ma non sentenziosa.`,
+        motori: `Agisci come un editorialista esperto del settore automotive e motociclistico. Scrivi un articolo in italiano su "${tObj.title}" con tono autorevole, sobrio e analitico, adatto a una rubrica su moto, auto e motori. Parti dai fatti verificabili, separa chiaramente dati tecnici, dichiarazioni, aspetti incerti e interpretazioni. Evita toni promozionali, entusiasmi da comunicato stampa, slogan, hype e retorica da recensione emotiva. Spiega il significato concreto della notizia per utenti, mercato, tecnologia, sicurezza, costi, normativa e utilizzo reale, quando pertinenti. Costruisci l'analisi in modo progressivo e concludi con una riflessione misurata, non sensazionalistica.`,
+        tecnologia: `Agisci come un editorialista esperto di tecnologia e innovazione. Scrivi un articolo in italiano su "${tObj.title}" con tono autorevole, sobrio e analitico, adatto a una rubrica dedicata alla tecnologia. Parti dai fatti verificabili, separa chiaramente dati, dichiarazioni, aspetti incerti e interpretazioni. Evita toni promozionali, entusiasmi da comunicato stampa, slogan, hype e retorica da "rivoluzione" non dimostrata. Spiega il significato concreto della notizia o del fenomeno per utenti, imprese, mercato, regolazione, sicurezza, uso reale e sviluppo tecnologico, quando pertinenti. Costruisci l'analisi in modo progressivo e concludi con una riflessione misurata, non sensazionalistica.`,
+        echi: `Agisci come un editorialista esperto di storia e attualità. Scrivi un articolo in italiano su "${tObj.title}" con tono autorevole, sobrio e analitico, adatto a una rubrica storica che prende spunto da fatti attuali per offrirne una lettura di lungo periodo. Parti dai fatti verificabili della notizia, separa chiaramente dati, dichiarazioni, aspetti incerti e interpretazioni. Collega poi l'evento presente a precedenti storici pertinenti, usando il paragone storico come strumento di comprensione e non come artificio retorico. Evita anacronismi, analogie forzate, semplificazioni, moralismi, slogan e toni enfatici. Non presentare il passato come una replica del presente: evidenzia invece somiglianze, differenze, limiti del confronto e specificità del contesto storico. Spiega che cosa la prospettiva storica aiuta a comprendere meglio della notizia attuale, costruisci l'analisi in modo progressivo e concludi con una riflessione misurata, non sentenziosa.`
+      };
 
-Titolo scelto: "${tObj.title}"
-Taglio: ${tObj.angle}${ctx}
-${focus.trim() ? "Focus: " + focus : ""}
+      const promptArticolo = `Oggi è il ${dataOggi}. Cerca sul web i dettagli aggiornati e approfonditi sulla notizia.
 
-${isE ? "ISTRUZIONI PER ECHI DAL PASSATO: Scrivi un editoriale narrativo e riflessivo che costruisca un ponte tra il fatto storico del passato e la notizia di oggi. Fai capire al lettore perché la storia si ripete o cosa possiamo imparare." : "ISTRUZIONI: Cerca sul web i dettagli aggiornati sulla notizia di oggi. Scrivi un editoriale di analisi ragionata, NON una cronaca piatta. Dai una chiave di lettura originale, spiega le implicazioni, offri una prospettiva che il lettore non trova sui quotidiani."}
+${sectionPrompts[sec] || sectionPrompts.attualita}
 
-REGOLE:
-- 300-500 parole, italiano, tono autorevole ma accessibile
-- NON includere la firma "di Francesco Pasquale" nel testo
-- NON inventare fatti: basati su notizie reali verificate
-- Suggerisci 2 titoli di articoli correlati dei giorni scorsi
+Taglio editoriale: ${tObj.angle}${ctx}
+${focus.trim() ? "Focus specifico: " + focus : ""}
+
+REGOLE TECNICHE:
+- MINIMO 800 parole, ideale 900-1000. NON scrivere meno di 800 parole.
+- NON includere la firma "di Francesco Pasquale" nel testo — è gestita dal sistema.
+- NON inventare fatti: basati SOLO su notizie reali verificate tramite web search.
+- Suggerisci 2 titoli di articoli correlati dei giorni scorsi con breve descrizione.
 ${artPrompt}`;
 
       try{
@@ -244,7 +250,7 @@ ${artPrompt}`;
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titolo" style={{width:"100%",padding:"12px 0",border:"none",borderBottom:`2px solid ${sc?.color||BD}`,background:"transparent",color:TX,fontFamily:"'Orbitron'",fontSize:22,fontWeight:700,outline:"none",marginBottom:12}}/>
         <input value={sub} onChange={e=>setSub(e.target.value)} placeholder="Sottotitolo" style={{width:"100%",padding:"8px 0",border:"none",borderBottom:`1px solid ${BDL}`,background:"transparent",color:TS,fontSize:16,fontStyle:"italic",outline:"none",marginBottom:24}}/>
         <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Scrivi l'editoriale..." style={{width:"100%",minHeight:320,padding:20,borderRadius:10,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:15,lineHeight:1.85,resize:"vertical",outline:"none",marginBottom:6}}/>
-        <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginBottom:24,fontSize:11,color:TD,fontFamily:"'Orbitron'"}}><span>{w} parole</span><span style={{color:w>=300&&w<=500?OK:w>500?DG:AC}}>{w<300?`mancano ${300-w}`:w>500?`${w-500} in eccesso`:"✓ ok"}</span></div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginBottom:24,fontSize:11,color:TD,fontFamily:"'Orbitron'"}}><span>{w} parole</span><span style={{color:w>=800&&w<=1100?OK:w>1100?DG:AC}}>{w<800?`mancano ${800-w}`:w>1100?`${w-1100} in eccesso`:"✓ ok"}</span></div>
         <Lab>Link correlati</Lab>
         {links.map((l,i)=><div key={i} style={{display:"flex",gap:10,marginBottom:8,padding:12,background:BWM,borderRadius:8,border:`1px solid ${BDL}`}}><span style={{width:24,height:24,borderRadius:"50%",background:AC+"18",color:AC,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:10,fontWeight:700,flexShrink:0}}>{i+1}</span><div style={{flex:1}}><input value={l.title} onChange={e=>uL(i,"title",e.target.value)} placeholder="Titolo link" style={{width:"100%",padding:"4px 0",border:"none",background:"transparent",color:TX,fontSize:14,fontWeight:600,outline:"none"}}/><input value={l.description} onChange={e=>uL(i,"description",e.target.value)} placeholder="Descrizione" style={{width:"100%",padding:"2px 0",border:"none",background:"transparent",color:TD,fontSize:13,outline:"none"}}/></div></div>)}
         <div style={{padding:14,background:BWM,borderRadius:8,border:`1px solid ${BDL}`,display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16}}><div><span style={{fontSize:10,color:TD,fontFamily:"'Orbitron'",letterSpacing:1}}>AUTORE</span><div style={{fontSize:15,color:TX,fontWeight:600,marginTop:2}}>Francesco Pasquale</div></div><div style={{width:38,height:38,borderRadius:"50%",background:`linear-gradient(135deg,${AC},${sc?.color||BD})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#fff"}}>FP</div></div>
