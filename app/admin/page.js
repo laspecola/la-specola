@@ -168,6 +168,8 @@ Rispondi SOLO con JSON array:
     };
 
     // ── PROMPT: genera articolo in 2 fasi ──
+    // Fase 1: SEMPRE Claude (ha web search) per raccogliere fatti
+    // Fase 2: il modello selezionato dall'utente per scrivere l'articolo
     const generate=async(tObj)=>{
       setSelTitle(tObj);setStep("generating");setErr(null);
       const isE=sec==="echi";
@@ -179,103 +181,71 @@ Rispondi SOLO con JSON array:
       const dataOggi = todayIT();
 
       try{
-        // ═══ FASE 1: RICERCA FATTI (con web search) ═══
-        const promptRicerca = `Oggi è il ${dataOggi}. Cerca sul web tutte le informazioni disponibili su questo tema: "${tObj.title}" (${tObj.angle}).
+        // ═══ FASE 1: RICERCA FATTI — sempre Claude con web search ═══
+        const promptRicerca = `Oggi è il ${dataOggi}. Cerca sul web tutte le informazioni disponibili su: "${tObj.title}" (${tObj.angle}).
 ${ctx}
 ${focus.trim() ? "Focus: " + focus : ""}
 
 Cerca su ANSA, Corriere della Sera, Repubblica, Il Sole 24 Ore, Sky TG24 e altre fonti autorevoli.
 
 Produci un DOSSIER COMPLETO con:
-1. FATTI ACCERTATI: cosa è successo, quando, dove, chi sono i protagonisti. Date e dati precisi.
-2. DICHIARAZIONI: chi ha detto cosa, citazioni testuali se disponibili, con fonte.
-3. CONTESTO: cosa c'era prima, quali sono i precedenti, perché questa notizia è importante.
-4. POSIZIONI CONTRASTANTI: chi è a favore, chi è contro, quali sono le contraddizioni.
-5. DATI E NUMERI: statistiche, cifre economiche, dati di mercato, percentuali se pertinenti.
-6. LIMITI E INCERTEZZE: cosa non si sa ancora, cosa è controverso, dove le fonti divergono.
+1. FATTI ACCERTATI: cosa è successo, quando, dove, chi. Date e dati precisi.
+2. DICHIARAZIONI TESTUALI: chi ha detto cosa, con fonte.
+3. CONTESTO: precedenti, stato della questione prima di oggi.
+4. POSIZIONI CONTRASTANTI: favorevoli, contrari, contraddizioni tra le fonti.
+5. DATI E NUMERI: statistiche, cifre, percentuali.
+6. LIMITI E INCERTEZZE: cosa non si sa, cosa è controverso, dove le fonti divergono.
 
-Scrivi in italiano. Sii il più completo e dettagliato possibile. Questo dossier servirà come base per scrivere un articolo di analisi.`;
+Scrivi in italiano. Sii completo e dettagliato. Questo dossier sarà la base per un articolo di analisi.`;
 
-        const fatti = await scanAI(promptRicerca, model, true);
+        const fatti = await scanAI(promptRicerca, "claude", true);
 
-        // ═══ FASE 2: SCRITTURA ARTICOLO (senza web search, tutti i token per scrivere) ═══
+        // ═══ FASE 2: SCRITTURA ARTICOLO — modello selezionato, senza web search ═══
         const sectionPrompts = {
           attualita: `Sei un editorialista senior di una rivista italiana di approfondimento politico-economico.
 
-STRUTTURA OBBLIGATORIA (6 paragrafi):
-
-PARAGRAFO 1 — L'APERTURA (80-100 parole): Il fatto centrale con precisione. Data, luogo, protagonisti, cosa è successo. Nessuna retorica. Solo il fatto nudo.
-
-PARAGRAFO 2 — IL CONTESTO (100-120 parole): Cosa c'era PRIMA. Precedenti, stato della questione fino a ieri. Perché questa notizia è importante.
-
-PARAGRAFO 3 — LE POSIZIONI IN CAMPO (120-150 parole): Chi dice cosa. Dichiarazioni, posizioni, contraddizioni tra le versioni. Non prendere posizione.
-
-PARAGRAFO 4 — L'ANALISI (150-180 parole): PERCHÉ le cose stanno così. Interessi in gioco, pressioni non dette, calcoli dietro le dichiarazioni. Dati, numeri, precedenti. Il lettore deve trovare qualcosa che non ha letto altrove.
-
-PARAGRAFO 5 — LE IMPLICAZIONI (100-120 parole): Scenari possibili, rischi, variabili da osservare. Niente previsioni azzardate.
-
-PARAGRAFO 6 — CHIUSURA (80-100 parole): Sintesi della tesi, derivata dall'analisi. NON una frase a effetto. Una idea precisa.
-
-TONO: Sobrio, analitico. Mai enfatico, mai moralismi, mai cliché giornalistici.`,
+STRUTTURA (6 paragrafi):
+1. APERTURA (80-100 parole): Il fatto centrale. Data, luogo, protagonisti. Nessuna retorica.
+2. CONTESTO (100-120 parole): Cosa c'era PRIMA. Precedenti, perché è importante.
+3. POSIZIONI IN CAMPO (120-150 parole): Chi dice cosa. Dichiarazioni, contraddizioni. Non prendere posizione.
+4. ANALISI (150-180 parole): PERCHÉ le cose stanno così. Interessi, pressioni, calcoli. Dati e precedenti. Il lettore deve trovare qualcosa che non ha letto altrove.
+5. IMPLICAZIONI (100-120 parole): Scenari possibili, rischi, variabili da osservare.
+6. CHIUSURA (80-100 parole): Sintesi argomentata. NON frase ad effetto.`,
 
           motori: `Sei un editorialista senior del settore automotive e motociclistico.
 
-STRUTTURA OBBLIGATORIA (6 paragrafi):
-
-PARAGRAFO 1 — IL FATTO (80-100 parole): Annuncio, lancio, decisione. Dati tecnici essenziali. No comunicato stampa.
-
-PARAGRAFO 2 — IL CONTESTO DI MERCATO (100-120 parole): Panorama attuale, concorrenti, andamento del segmento.
-
-PARAGRAFO 3 — L'ANALISI TECNICA (120-150 parole): Significato concreto per chi guida o compra. Vantaggi reali, limiti, confronto.
-
-PARAGRAFO 4 — NORMATIVA E COSTI (100-120 parole): Incentivi, emissioni, costi di gestione, aspetto economico concreto.
-
-PARAGRAFO 5 — SCENARIO (100-120 parole): Tendenze del settore, cosa aspettarsi nei prossimi 12-18 mesi.
-
-PARAGRAFO 6 — CHIUSURA (80-100 parole): Giudizio misurato fondato sui fatti esposti.
-
-TONO: Competente, concreto, mai promozionale. Zero hype.`,
+STRUTTURA (6 paragrafi):
+1. IL FATTO (80-100 parole): Annuncio, lancio, decisione. Dati tecnici. No comunicato stampa.
+2. CONTESTO DI MERCATO (100-120 parole): Panorama, concorrenti, andamento segmento.
+3. ANALISI TECNICA (120-150 parole): Significato concreto per chi guida o compra.
+4. NORMATIVA E COSTI (100-120 parole): Incentivi, emissioni, costi gestione.
+5. SCENARIO (100-120 parole): Tendenze settore, prossimi 12-18 mesi.
+6. CHIUSURA (80-100 parole): Giudizio misurato fondato sui fatti.`,
 
           tecnologia: `Sei un editorialista senior di tecnologia e innovazione.
 
-STRUTTURA OBBLIGATORIA (6 paragrafi):
-
-PARAGRAFO 1 — IL FATTO (80-100 parole): Annuncio, rilascio, scoperta. Dati specifici.
-
-PARAGRAFO 2 — COME FUNZIONA (100-120 parole): Spiegazione tecnica accessibile. Cosa fa, come si differenzia.
-
-PARAGRAFO 3 — IMPATTO REALE (120-150 parole): Chi ne beneficia, chi è minacciato. Reale vs promessa futura.
-
-PARAGRAFO 4 — QUADRO COMPETITIVO (100-120 parole): Concorrenti, brevetti, regolamenti. Evoluzione o discontinuità?
-
-PARAGRAFO 5 — RISCHI E LIMITI (100-120 parole): Limiti tecnici, rischi etici, concentrazione di mercato.
-
-PARAGRAFO 6 — CHIUSURA (80-100 parole): Tesi precisa, non retorica.
-
-TONO: Informato, preciso, mai entusiasta. Zero "rivoluzione".`,
+STRUTTURA (6 paragrafi):
+1. IL FATTO (80-100 parole): Annuncio, rilascio, scoperta. Dati specifici.
+2. COME FUNZIONA (100-120 parole): Spiegazione tecnica accessibile.
+3. IMPATTO REALE (120-150 parole): Benefici e minacce. Reale vs promessa futura.
+4. QUADRO COMPETITIVO (100-120 parole): Concorrenti, brevetti, regolamenti.
+5. RISCHI E LIMITI (100-120 parole): Limiti tecnici, rischi etici.
+6. CHIUSURA (80-100 parole): Tesi precisa.`,
 
           echi: `Sei un editorialista esperto di storia contemporanea.
 
-STRUTTURA OBBLIGATORIA (6 paragrafi):
-
-PARAGRAFO 1 — LA NOTIZIA DI OGGI (80-100 parole): Il fatto attuale. Cosa, quando, chi.
-
-PARAGRAFO 2 — IL PARALLELO STORICO (120-150 parole): Il fatto storico. Date, nomi, luoghi, contesto dell'epoca.
-
-PARAGRAFO 3 — LE SOMIGLIANZE (100-120 parole): Cosa accomuna i due eventi. Dinamiche concrete, non astratte.
-
-PARAGRAFO 4 — LE DIFFERENZE (100-120 parole): Cosa è diverso. Limiti del confronto.
-
-PARAGRAFO 5 — COSA CI INSEGNA (120-150 parole): Lezione concreta, non moralismo vago.
-
-PARAGRAFO 6 — CHIUSURA (80-100 parole): Riflessione sobria. Tesi precisa.
-
-TONO: Colto, accessibile, mai professorale. No anacronismi.`
+STRUTTURA (6 paragrafi):
+1. LA NOTIZIA DI OGGI (80-100 parole): Il fatto attuale.
+2. IL PARALLELO STORICO (120-150 parole): Il fatto storico. Date, nomi, contesto epoca.
+3. SOMIGLIANZE (100-120 parole): Cosa accomuna i due eventi concretamente.
+4. DIFFERENZE (100-120 parole): Cosa è diverso. Limiti del confronto.
+5. COSA CI INSEGNA (120-150 parole): Lezione concreta, non moralismo.
+6. CHIUSURA (80-100 parole): Riflessione sobria, tesi precisa.`
         };
 
         const promptArticolo = `Scrivi un articolo di analisi su "${tObj.title}" per la sezione "${s.name}" de La Specola.
 
-ECCO IL DOSSIER CON TUTTI I FATTI VERIFICATI DA CUI DEVI PARTIRE:
+ECCO IL DOSSIER CON I FATTI VERIFICATI:
 ---
 ${fatti}
 ---
@@ -286,18 +256,18 @@ Taglio: ${tObj.angle}
 ${focus.trim() ? "Focus: " + focus : ""}
 
 REGOLE ASSOLUTE:
-- MINIMO 800 parole, ideale 900-1000. Se scrivi meno di 800 è INSUFFICIENTE.
-- Basa l'articolo ESCLUSIVAMENTE sui fatti del dossier sopra. Non aggiungere informazioni che non sono nel dossier.
+- MINIMO 800 parole. Se scrivi meno di 800 è INSUFFICIENTE.
+- Basa l'articolo ESCLUSIVAMENTE sui fatti del dossier. Non aggiungere informazioni non presenti.
 - NON includere firma "di Francesco Pasquale".
 
-VINCOLI DI RIGORE:
-- Non attribuire intenzioni o strategie ai leader come fatti acquisiti. Segnala le interpretazioni come tali.
-- Evita "dietro le quinte", "si cela", "in realtà", "il vero significato" senza prove puntuali.
-- Chiusura derivata dall'analisi, non frase ad effetto.
-- Distingui sempre fatti, inferenze e giudizi. Inferenze introdotte con "è plausibile che", "i fatti suggeriscono".
-- Metti alla prova la tua tesi: esponi almeno un elemento che la contraddice o la limita.
-- Titolo che descrive il problema, non che lo risolve.
-- Rileggi e riscrivi ogni frase con giudizi impliciti o retorica da editoriale.
+VINCOLI DI RIGORE — OBBLIGATORI:
+- NON attribuire intenzioni, strategie o calcoli ai leader come fatti acquisiti. Se interpreti, segnalalo ("è plausibile che", "i fatti suggeriscono").
+- NON usare linguaggio rivelatorio: "si cela", "dietro le quinte", "in realtà", "il vero significato", "il colpo di genio", "rivela la maturità/sofisticatezza".
+- NON usare cliché: "il coltello dalla parte del manico", "il paradosso è evidente", "calcolo cristallino".
+- La CHIUSURA deve derivare dall'analisi. Vietate battute ad effetto, aforismi, slogan.
+- METTI ALLA PROVA la tua tesi: esponi almeno un elemento che la contraddice o la limita.
+- Il TITOLO descrive il problema, non lo risolve. Niente titoli che contengono già la conclusione.
+- RILEGGI e riscrivi ogni frase con giudizi impliciti, intenzioni attribuite o retorica da editoriale.
 ${artPrompt}`;
 
         const t = await scanAI(promptArticolo, model, false);
