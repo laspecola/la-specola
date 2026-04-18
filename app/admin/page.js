@@ -55,6 +55,7 @@ function Login({onLogin}){
 // ═══════════════════════════════
 function AdminApp({password}){
   const [arts,setArts]=useState([]);
+  const [siteSettings,setSiteSettings]=useState({});
   const [view,setView]=useState("dashboard");
   const [ed,setEd]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -67,7 +68,10 @@ function AdminApp({password}){
     const d=await r.json();
     setArts(Array.isArray(d)?d:[]);setLoading(false);
   };
-  useEffect(()=>{fetchArts()},[]);
+  const fetchSettings=async()=>{
+    try{const r=await fetch("/api/settings",{headers});const d=await r.json();setSiteSettings(d);}catch{}
+  };
+  useEffect(()=>{fetchArts();fetchSettings()},[]);
 
   const saveArt=async(article)=>{
     const isNew=!article.id||article._isNew;
@@ -329,6 +333,64 @@ ${artPrompt}`;
     );
   }
 
+  // ── Chi siamo Editor ──
+  function ChiSiamoView(){
+    const [projDesc,setProjDesc]=useState(siteSettings.project_description||"");
+    const [edName,setEdName]=useState(siteSettings.editor_name||"Francesco Pasquale");
+    const [edBio,setEdBio]=useState(siteSettings.editor_bio||"");
+    const [subtitle,setSubtitle]=useState(siteSettings.site_subtitle||"Osservare oggi per comprendere il domani");
+    const [saving,setSaving]=useState(false);
+    const [saved,setSaved]=useState(false);
+
+    const doSave=async()=>{
+      setSaving(true);
+      const r=await fetch("/api/settings",{method:"PUT",headers,body:JSON.stringify({
+        project_description:projDesc,
+        editor_name:edName,
+        editor_bio:edBio,
+        site_subtitle:subtitle,
+      })});
+      const d=await r.json();
+      if(d.ok){setSaved(true);setTimeout(()=>setSaved(false),3000);await fetchSettings();}
+      else{fl("Errore: "+(d.error||"salvataggio fallito"),"err");}
+      setSaving(false);
+    };
+
+    return(
+      <div style={{animation:"fadeUp 0.3s ease"}}>
+        {saved&&<div style={{padding:"12px 18px",background:"#E8F5E9",borderRadius:10,border:`1px solid ${OK}22`,marginBottom:20,color:OK,fontSize:13,fontWeight:600}}>✓ Salvato con successo</div>}
+
+        <div style={{background:BW,borderRadius:12,border:`1px solid ${BD}`,padding:24,marginBottom:20}}>
+          <Lab>Sottotitolo del sito</Lab>
+          <input value={subtitle} onChange={e=>setSubtitle(e.target.value)} style={{width:"100%",padding:"10px 14px",borderRadius:8,border:`1px solid ${BD}`,background:BWM,color:TX,fontSize:14,outline:"none",marginBottom:4}}/>
+          <div style={{fontSize:11,color:TD}}>Appare sotto "LA SPECOLA" nell'header</div>
+        </div>
+
+        <div style={{background:BW,borderRadius:12,border:`1px solid ${BD}`,padding:24,marginBottom:20}}>
+          <Lab>Descrizione del progetto</Lab>
+          <textarea value={projDesc} onChange={e=>setProjDesc(e.target.value)} placeholder="Descrivi cos'è La Specola, la sua missione, il suo approccio..." rows={5} style={{width:"100%",padding:"12px 14px",borderRadius:8,border:`1px solid ${BD}`,background:BWM,color:TX,fontSize:14,lineHeight:1.7,outline:"none",resize:"vertical"}}/>
+          <div style={{fontSize:11,color:TD,marginTop:4}}>Visibile nella pagina "Chi siamo" del sito</div>
+        </div>
+
+        <div style={{background:BW,borderRadius:12,border:`1px solid ${BD}`,padding:24,marginBottom:20}}>
+          <Lab>L'editore</Lab>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,color:TS,marginBottom:4,fontWeight:600}}>Nome</div>
+            <input value={edName} onChange={e=>setEdName(e.target.value)} style={{width:"100%",padding:"10px 14px",borderRadius:8,border:`1px solid ${BD}`,background:BWM,color:TX,fontSize:14,outline:"none"}}/>
+          </div>
+          <div>
+            <div style={{fontSize:12,color:TS,marginBottom:4,fontWeight:600}}>Bio</div>
+            <textarea value={edBio} onChange={e=>setEdBio(e.target.value)} placeholder="Chi sei, cosa fai, perché scrivi La Specola..." rows={4} style={{width:"100%",padding:"12px 14px",borderRadius:8,border:`1px solid ${BD}`,background:BWM,color:TX,fontSize:14,lineHeight:1.7,outline:"none",resize:"vertical"}}/>
+          </div>
+        </div>
+
+        <Btn v="pri" onClick={doSave} disabled={saving} style={{width:"100%",justifyContent:"center",padding:14,fontSize:15,borderRadius:10}}>
+          {saving?"Salvataggio...":"💾 Salva modifiche"}
+        </Btn>
+      </div>
+    );
+  }
+
   // ── Dashboard ──
   function DashView(){
     const [fS,setFS]=useState("all");const [fSt,setFSt]=useState("all");
@@ -356,11 +418,11 @@ ${artPrompt}`;
       {toast&&<div style={{position:"fixed",top:16,right:16,zIndex:999,padding:"12px 22px",borderRadius:10,background:toast.t==="err"?DG:OK,color:"#fff",fontWeight:600,fontSize:14,animation:"fadeUp 0.3s ease",boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>{toast.m}</div>}
       <header style={{background:BW,borderBottom:`1px solid ${BD}`,padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between",height:58}}>
         <div style={{display:"flex",alignItems:"center",gap:14}}><div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${AC},#B8860B)`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:13,fontWeight:900,color:"#fff"}}>S</div><div><span style={{fontFamily:"'Orbitron'",fontSize:14,fontWeight:700,letterSpacing:2}}>LA SPECOLA</span><span style={{fontSize:10,color:TD,marginLeft:10}}>Admin</span></div></div>
-        <nav style={{display:"flex",gap:2,height:"100%"}}>{[{id:"dashboard",l:"Dashboard",ic:"◫"},{id:"scanner",l:"Scanner",ic:"◎"}].map(n=><button key={n.id} onClick={()=>{setView(n.id);setEd(null)}} style={{padding:"0 16px",border:"none",background:"transparent",color:view===n.id&&!ed?AC:TD,fontFamily:"'Orbitron'",fontSize:10,fontWeight:600,letterSpacing:1,cursor:"pointer",borderBottom:`2px solid ${view===n.id&&!ed?AC:"transparent"}`,display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:14}}>{n.ic}</span>{n.l.toUpperCase()}</button>)}</nav>
+        <nav style={{display:"flex",gap:2,height:"100%"}}>{[{id:"dashboard",l:"Dashboard",ic:"◫"},{id:"scanner",l:"Scanner",ic:"◎"},{id:"chisiamo",l:"Chi siamo",ic:"✎"}].map(n=><button key={n.id} onClick={()=>{setView(n.id);setEd(null)}} style={{padding:"0 16px",border:"none",background:"transparent",color:view===n.id&&!ed?AC:TD,fontFamily:"'Orbitron'",fontSize:10,fontWeight:600,letterSpacing:1,cursor:"pointer",borderBottom:`2px solid ${view===n.id&&!ed?AC:"transparent"}`,display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:14}}>{n.ic}</span>{n.l.toUpperCase()}</button>)}</nav>
         <div style={{fontSize:11,color:TD,fontFamily:"'Orbitron'"}}>{fS(new Date())}</div>
       </header>
       <main style={{maxWidth:860,margin:"0 auto",padding:"28px 20px 50px"}}>
-        {ed?<EditorView/>:view==="scanner"?<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◎</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Scanner</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Cerca notizie di oggi e genera bozze</p></div></div><ScannerView/></>:<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◫</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Dashboard</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Gestisci i tuoi articoli</p></div></div><DashView/></>}
+        {ed?<EditorView/>:view==="scanner"?<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◎</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Scanner</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Cerca notizie di oggi e genera bozze</p></div></div><ScannerView/></>:view==="chisiamo"?<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>✎</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Chi siamo</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Modifica la pagina pubblica</p></div></div><ChiSiamoView/></>:<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◫</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Dashboard</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Gestisci i tuoi articoli</p></div></div><DashView/></>}
       </main>
       <footer style={{textAlign:"center",padding:"16px",borderTop:`1px solid ${BD}`,fontSize:11,color:TD,fontStyle:"italic"}}>La Specola — Osservare oggi per comprendere il domani</footer>
     </div>
