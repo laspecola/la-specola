@@ -55,7 +55,6 @@ function Login({onLogin}){
 // ═══════════════════════════════
 function AdminApp({password}){
   const [arts,setArts]=useState([]);
-  const [siteSettings,setSiteSettings]=useState({});
   const [view,setView]=useState("dashboard");
   const [ed,setEd]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -68,10 +67,7 @@ function AdminApp({password}){
     const d=await r.json();
     setArts(Array.isArray(d)?d:[]);setLoading(false);
   };
-  const fetchSettings=async()=>{
-    try{const r=await fetch("/api/settings",{headers});const d=await r.json();setSiteSettings(d);}catch{}
-  };
-  useEffect(()=>{fetchArts();fetchSettings()},[]);
+  useEffect(()=>{fetchArts()},[]);
 
   const saveArt=async(article)=>{
     const isNew=!article.id||article._isNew;
@@ -357,43 +353,38 @@ ${artPrompt}`;
     );
   }
 
-  // ── Chi siamo Editor ──
+  // ── Chi siamo Editor (usa il sistema articoli) ──
   function ChiSiamoView(){
-    const [projDesc,setProjDesc]=useState(siteSettings.project_description||"");
-    const [edName,setEdName]=useState(siteSettings.editor_name||"Francesco Pasquale");
-    const [edBio,setEdBio]=useState(siteSettings.editor_bio||"");
-    const [subtitle,setSubtitle]=useState(siteSettings.site_subtitle||"Osservare oggi per comprendere il domani");
+    const chiArt = arts.find(a=>a.section==="chisiamo");
+    const [projDesc,setProjDesc]=useState(chiArt?.body||"");
+    const [edName,setEdName]=useState(chiArt?.title||"Francesco Pasquale");
+    const [edBio,setEdBio]=useState(chiArt?.subtitle||"");
     const [saving,setSaving]=useState(false);
-    const [saved,setSaved]=useState(false);
 
     const doSave=async()=>{
       setSaving(true);
-      const r=await fetch("/api/settings",{method:"PUT",headers,body:JSON.stringify({
-        project_description:projDesc,
-        editor_name:edName,
-        editor_bio:edBio,
-        site_subtitle:subtitle,
-      })});
-      const d=await r.json();
-      if(d.ok){setSaved(true);setTimeout(()=>setSaved(false),3000);await fetchSettings();}
-      else{fl("Errore: "+(d.error||"salvataggio fallito"),"err");}
+      const article = {
+        ...(chiArt||{}),
+        _isNew: !chiArt?.id,
+        section: "chisiamo",
+        title: edName,
+        subtitle: edBio,
+        body: projDesc,
+        links: [],
+        status: "published",
+        author: "Francesco Pasquale",
+        edition_date: chiArt?.edition_date || tod(),
+      };
+      await saveArt(article);
       setSaving(false);
     };
 
     return(
       <div style={{animation:"fadeUp 0.3s ease"}}>
-        {saved&&<div style={{padding:"12px 18px",background:"#E8F5E9",borderRadius:10,border:`1px solid ${OK}22`,marginBottom:20,color:OK,fontSize:13,fontWeight:600}}>✓ Salvato con successo</div>}
-
-        <div style={{background:BW,borderRadius:12,border:`1px solid ${BD}`,padding:24,marginBottom:20}}>
-          <Lab>Sottotitolo del sito</Lab>
-          <input value={subtitle} onChange={e=>setSubtitle(e.target.value)} style={{width:"100%",padding:"10px 14px",borderRadius:8,border:`1px solid ${BD}`,background:BWM,color:TX,fontSize:14,outline:"none",marginBottom:4}}/>
-          <div style={{fontSize:11,color:TD}}>Appare sotto "LA SPECOLA" nell'header</div>
-        </div>
-
         <div style={{background:BW,borderRadius:12,border:`1px solid ${BD}`,padding:24,marginBottom:20}}>
           <Lab>Descrizione del progetto</Lab>
-          <textarea value={projDesc} onChange={e=>setProjDesc(e.target.value)} placeholder="Descrivi cos'è La Specola, la sua missione, il suo approccio..." rows={5} style={{width:"100%",padding:"12px 14px",borderRadius:8,border:`1px solid ${BD}`,background:BWM,color:TX,fontSize:14,lineHeight:1.7,outline:"none",resize:"vertical"}}/>
-          <div style={{fontSize:11,color:TD,marginTop:4}}>Visibile nella pagina "Chi siamo" del sito</div>
+          <textarea value={projDesc} onChange={e=>setProjDesc(e.target.value)} placeholder="Descrivi La Specola, la sua missione, il suo approccio..." rows={8} style={{width:"100%",padding:"12px 14px",borderRadius:8,border:`1px solid ${BD}`,background:BWM,color:TX,fontSize:14,lineHeight:1.7,outline:"none",resize:"vertical"}}/>
+          <div style={{fontSize:11,color:TD,marginTop:4}}>Visibile nella pagina "Chi siamo" del sito pubblico</div>
         </div>
 
         <div style={{background:BW,borderRadius:12,border:`1px solid ${BD}`,padding:24,marginBottom:20}}>
@@ -409,7 +400,7 @@ ${artPrompt}`;
         </div>
 
         <Btn v="pri" onClick={doSave} disabled={saving} style={{width:"100%",justifyContent:"center",padding:14,fontSize:15,borderRadius:10}}>
-          {saving?"Salvataggio...":"💾 Salva modifiche"}
+          {saving?"Salvataggio...":"💾 Salva e pubblica"}
         </Btn>
       </div>
     );
