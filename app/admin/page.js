@@ -1,13 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const SECTIONS=[{id:"attualita",name:"Attualità",color:"#1A5276",icon:"🌍",desc:"politica, economia, società"},{id:"motori",name:"Motori",color:"#C0392B",icon:"🏎️",desc:"auto, moto, mercato"},{id:"tecnologia",name:"Tecnologia",color:"#5B3FA0",icon:"⚡",desc:"tech, AI, innovazione"},{id:"echi",name:"Echi dal Passato",color:"#6B5B4F",icon:"📜",desc:"storia e attualità"}];
+const SECTIONS=[{id:"attualita",name:"Attualità",color:"#1A5276",icon:"🌍",desc:"politica, economia, società, esteri, sport"},{id:"motori",name:"Motori",color:"#C0392B",icon:"🏎️",desc:"auto, moto, mercato automotive, novità, prezzi"},{id:"tecnologia",name:"Tecnologia",color:"#5B3FA0",icon:"⚡",desc:"tech, AI, informatica, innovazione, scienza"},{id:"echi",name:"Echi dal Passato",color:"#6B5B4F",icon:"📜",desc:"fatto storico collegato all'attualità di oggi"}];
 const MODELS=[{id:"claude",name:"Claude",icon:"🟣"},{id:"gemini",name:"Gemini",icon:"🔵"},{id:"chatgpt",name:"ChatGPT",icon:"🟢"}];
 const AC="#D4930D",BG="#F5F3EF",BW="#FFFFFF",BWM="#FAF8F5",BD="#E0DCD5",BDL="#EBE8E3",TX="#1A1A1A",TS="#5A5650",TD="#9A9590",DG="#C0392B",OK="#27AE60";
 const ST={draft:{bg:"#F0EDE8",c:"#8A8580",l:"Bozza",d:"○"},published:{bg:"#E8F5E9",c:OK,l:"Pubblicato",d:"●"}};
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2,6)}
 function tod(){return new Date().toISOString().split("T")[0]}
+function todayIT(){return new Date().toLocaleDateString("it-IT",{day:"numeric",month:"long",year:"numeric"})}
 function fD(d){return new Date(d).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
 function fS(d){return new Date(d).toLocaleDateString("it-IT",{day:"numeric",month:"short"})}
 function fT(d){return new Date(d).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}
@@ -23,7 +24,6 @@ function Spinner({label}){return <div style={{textAlign:"center",padding:"44px 2
 function Lab({children}){return <div style={{fontSize:11,color:TD,fontFamily:"'Orbitron'",letterSpacing:1.5,marginBottom:10,textTransform:"uppercase"}}>{children}</div>}
 
 function parseLinks(da_seguire){if(!da_seguire||!Array.isArray(da_seguire))return[];return da_seguire.map(s=>{const p=s.split("|||");return{title:p[0]||"",description:p[1]||""};}).filter(l=>l.title)}
-function serializeLinks(links){return(links||[]).filter(l=>l.title?.trim()).map(l=>`${l.title}|||${l.description||""}`)}
 
 // ═══════════════════════════════
 // LOGIN
@@ -112,14 +112,92 @@ function AdminApp({password}){
 
     const pj=(t)=>{let c=t.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();const fb=c.search(/[\[{]/);if(fb>0)c=c.substring(fb);const lb=Math.max(c.lastIndexOf("}"),c.lastIndexOf("]"));if(lb>0)c=c.substring(0,lb+1);try{return JSON.parse(c)}catch{}const m=c.match(/\[[\s\S]*\]/);if(m)try{return JSON.parse(m[0])}catch{}return null};
     const parseArt=(t,ft)=>{const tag=n=>{const m=t.match(new RegExp(`<${n}>([\\s\\S]*?)</${n}>`,"i"));return m?m[1].trim():""};const b=tag("CORPO");if(b){const l1=tag("LINK1"),l2=tag("LINK2");const pl=r=>{if(!r)return null;const p=r.split("|||").map(s=>s.trim());return p.length>=2?{title:p[0],description:p[1]}:{title:r,description:""}};return{title:tag("TITOLO")||ft,subtitle:tag("SOTTOTITOLO"),body:b.replace(/^di\s+Francesco\s+Pasquale\s*/i,"").trim(),links:[pl(l1),pl(l2)].filter(Boolean)}}const p=pj(t);if(p&&p.body)return{title:p.title||ft,subtitle:p.subtitle||"",body:p.body.replace(/^di\s+Francesco\s+Pasquale\s*/i,"").trim(),links:p.links||[]};return{title:ft,subtitle:"",body:t.replace(/^di\s+Francesco\s+Pasquale\s*/i,"").trim(),links:[]}};
-    const artPrompt=`\nUSA QUESTO FORMATO:\n<TITOLO>Titolo</TITOLO>\n<SOTTOTITOLO>Sottotitolo</SOTTOTITOLO>\n<CORPO>\nTesto 300-500 parole\n</CORPO>\n<LINK1>Titolo link 1 ||| Descrizione</LINK1>\n<LINK2>Titolo link 2 ||| Descrizione</LINK2>`;
+    const artPrompt=`\nUSA ESATTAMENTE QUESTO FORMATO nella risposta:\n<TITOLO>Titolo dell'editoriale</TITOLO>\n<SOTTOTITOLO>Sottotitolo breve</SOTTOTITOLO>\n<CORPO>\nTesto completo 300-500 parole, solo prosa, nessuna firma.\n</CORPO>\n<LINK1>Titolo primo link correlato ||| Breve descrizione</LINK1>\n<LINK2>Titolo secondo link correlato ||| Breve descrizione</LINK2>`;
 
-    const startRegular=async()=>{setStep("load_titles");setErr(null);try{const t=await scanAI(`Redattore de "La Specola". Cerca notizie di OGGI per "${s.name}" (${s.desc}).${focus.trim()?` Focus: ${focus}`:""}\nProponi 4 titoli con angoli diversi.\nSOLO JSON: [{"title":"Titolo","angle":"Taglio (1 riga)"}]`,model);const p=pj(t);if(p&&Array.isArray(p)&&p.length>0){setTitles(p.slice(0,4));setStep("titles")}else{setErr("Errore titoli.");setStep("idle")}}catch(e){setErr(e.message);setStep("idle")}};
+    // ── PROMPT: titoli per sezioni normali ──
+    const startRegular=async()=>{
+      setStep("load_titles");setErr(null);
+      const dataOggi = todayIT();
+      const promptTitoli = `ISTRUZIONE CRITICA: Oggi è il ${dataOggi}. DEVI cercare sul web le notizie REALI pubblicate OGGI sui principali quotidiani e siti di news italiani: Corriere della Sera, Repubblica, ANSA, Il Sole 24 Ore, Sky TG24, Fatto Quotidiano, HuffPost Italia.
 
+NON inventare notizie. NON usare notizie vecchie o generiche. Cerca SOLO notizie di OGGI ${dataOggi}.
+
+Sei il redattore de "La Specola", blog italiano di analisi e commento.
+Sezione: "${s.name}" (${s.desc}).
+${focus.trim() ? "Focus specifico richiesto dall'editore: " + focus : ""}
+
+Dopo aver cercato le notizie di oggi, proponi 4 titoli di editoriale basati su notizie REALI che hai trovato, ciascuno con un angolo/taglio diverso. Per ogni titolo indica anche la fonte della notizia.
+
+Rispondi SOLO con un array JSON valido, nessun altro testo prima o dopo:
+[{"title":"Titolo editoriale basato su notizia reale di oggi","angle":"Taglio editoriale — fonte: nome quotidiano"}]`;
+      
+      try{
+        const t=await scanAI(promptTitoli,model);
+        const p=pj(t);
+        if(p&&Array.isArray(p)&&p.length>0){setTitles(p.slice(0,4));setStep("titles")}
+        else{setErr("Errore generazione titoli. Riprova.");setStep("idle")}
+      }catch(e){setErr(e.message);setStep("idle")}
+    };
+
+    // ── PROMPT: Echi dal Passato ──
     const startEchi=()=>setStep("echi_pick");
-    const echiPick=async(sId)=>{setEchiSrc(sId);setStep("load_titles");setErr(null);const src=bySection[sId]||[];const ctx=src.map(a=>`Titolo: ${a.title}\nTesto: ${a.body?.substring(0,500)}`).join("\n---\n");const sn=SECTIONS.find(x=>x.id===sId)?.name;try{const t=await scanAI(`Rubrica "Echi dal Passato" de La Specola.\nArticoli di oggi sezione "${sn}":\n${ctx}\nProponi 4 titoli storici collegati.${focus.trim()?` Focus: ${focus}`:""}\nSOLO JSON: [{"title":"Titolo","angle":"Taglio + periodo storico"}]`,model);const p=pj(t);if(p&&Array.isArray(p)&&p.length>0){setTitles(p.slice(0,4));setStep("titles")}else{setErr("Errore titoli.");setStep("echi_pick")}}catch(e){setErr(e.message);setStep("echi_pick")}};
+    const echiPick=async(sId)=>{
+      setEchiSrc(sId);setStep("load_titles");setErr(null);
+      const src=bySection[sId]||[];
+      const ctx=src.map(a=>`Titolo: ${a.title}\nTesto: ${a.body?.substring(0,500)}`).join("\n---\n");
+      const sn=SECTIONS.find(x=>x.id===sId)?.name;
+      const dataOggi = todayIT();
+      const promptEchi = `Oggi è il ${dataOggi}. Sei il redattore della rubrica "Echi dal Passato" de La Specola, blog italiano.
 
-    const generate=async(tObj)=>{setSelTitle(tObj);setStep("generating");setErr(null);const isE=sec==="echi";let ctx="";if(isE&&echiSrc){const src=bySection[echiSrc]||[];ctx=`\nArticolo di riferimento: ${src.map(a=>`"${a.title}"`).join(", ")}`}try{const t=await scanAI(`Redattore de "La Specola", sezione "${s.name}".\nTitolo: "${tObj.title}" — ${tObj.angle}${ctx}${focus.trim()?`\nFocus: ${focus}`:""}\nScrivi editoriale 300-500 parole, italiano, autorevole.\n${isE?"Stile narrativo, collega passato e presente.":"Analisi ragionata."}\nNON includere firma.\n${artPrompt}`,model);const parsed=parseArt(t,tObj.title);setResult({...parsed,section:sec});setStep("preview")}catch(e){setErr(e.message);setStep("titles")}};
+Ecco gli articoli pubblicati oggi nella sezione "${sn}" da cui devi partire:
+
+${ctx}
+
+Partendo da questi articoli, trova 4 fatti storici del PASSATO che si collegano tematicamente alle notizie trattate oggi. Ogni titolo deve creare un ponte narrativo tra passato e presente, indicando il periodo storico.
+${focus.trim() ? "Focus aggiuntivo: " + focus : ""}
+
+Rispondi SOLO con JSON array:
+[{"title":"Titolo editoriale storico-attuale","angle":"Taglio narrativo — periodo storico di riferimento"}]`;
+
+      try{
+        const t=await scanAI(promptEchi,model);
+        const p=pj(t);
+        if(p&&Array.isArray(p)&&p.length>0){setTitles(p.slice(0,4));setStep("titles")}
+        else{setErr("Errore titoli.");setStep("echi_pick")}
+      }catch(e){setErr(e.message);setStep("echi_pick")}
+    };
+
+    // ── PROMPT: genera articolo completo ──
+    const generate=async(tObj)=>{
+      setSelTitle(tObj);setStep("generating");setErr(null);
+      const isE=sec==="echi";
+      let ctx="";
+      if(isE&&echiSrc){
+        const src=bySection[echiSrc]||[];
+        ctx="\nArticoli di riferimento della giornata: "+src.map(a=>'"'+a.title+'"').join(", ");
+      }
+      const dataOggi = todayIT();
+      const promptArticolo = `Oggi è il ${dataOggi}. Sei il redattore de "La Specola", sezione "${s.name}".
+
+Titolo scelto: "${tObj.title}"
+Taglio: ${tObj.angle}${ctx}
+${focus.trim() ? "Focus: " + focus : ""}
+
+${isE ? "ISTRUZIONI PER ECHI DAL PASSATO: Scrivi un editoriale narrativo e riflessivo che costruisca un ponte tra il fatto storico del passato e la notizia di oggi. Fai capire al lettore perché la storia si ripete o cosa possiamo imparare." : "ISTRUZIONI: Cerca sul web i dettagli aggiornati sulla notizia di oggi. Scrivi un editoriale di analisi ragionata, NON una cronaca piatta. Dai una chiave di lettura originale, spiega le implicazioni, offri una prospettiva che il lettore non trova sui quotidiani."}
+
+REGOLE:
+- 300-500 parole, italiano, tono autorevole ma accessibile
+- NON includere la firma "di Francesco Pasquale" nel testo
+- NON inventare fatti: basati su notizie reali verificate
+- Suggerisci 2 titoli di articoli correlati dei giorni scorsi
+${artPrompt}`;
+
+      try{
+        const t=await scanAI(promptArticolo,model);
+        const parsed=parseArt(t,tObj.title);
+        setResult({...parsed,section:sec});setStep("preview");
+      }catch(e){setErr(e.message);setStep("titles")}
+    };
 
     const accept=()=>{if(!result)return;const a={_isNew:true,edition_date:tod(),section:result.section,title:result.title,subtitle:result.subtitle||"",body:result.body,links:result.links||[],status:"draft",author:"Francesco Pasquale"};setEd(a);setView("dashboard");reset()};
     const isLoading=step==="load_titles"||step==="generating";
@@ -131,10 +209,10 @@ function AdminApp({password}){
         <Lab>Modello AI</Lab>
         <div style={{display:"flex",gap:6,marginBottom:20}}>{MODELS.map(m=><button key={m.id} onClick={()=>setModel(m.id)} style={{padding:"8px 16px",borderRadius:8,cursor:"pointer",border:`1px solid ${model===m.id?AC:BD}`,background:model===m.id?AC+"12":BW,color:model===m.id?AC:TS,fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:6}}><span>{m.icon}</span>{m.name}</button>)}</div>
         <Lab>Focus <span style={{color:BD}}>(opzionale)</span></Lab>
-        <input value={focus} onChange={e=>setFocus(e.target.value)} placeholder="Es. dazi USA-Cina..." style={{width:"100%",padding:"11px 16px",borderRadius:8,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:14,outline:"none",marginBottom:20}}/>
+        <input value={focus} onChange={e=>setFocus(e.target.value)} placeholder="Es. dazi USA-Cina, Sinner, mercato auto elettriche..." style={{width:"100%",padding:"11px 16px",borderRadius:8,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:14,outline:"none",marginBottom:20}}/>
         {sec==="echi"&&step==="idle"&&<div style={{marginBottom:20,padding:16,background:BWM,borderRadius:10,border:`1px solid ${BDL}`}}><Lab>📜 Articoli di oggi come base</Lab>{secsWith.length>0?todayNonEchi.map((a,i)=>{const sc=SECTIONS.find(x=>x.id===a.section);return <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,marginBottom:4}}><span style={{color:sc?.color,fontSize:10}}>●</span><span style={{color:sc?.color,fontWeight:600,fontSize:11}}>{sc?.name}</span><span>{a.title}</span></div>}):<div style={{fontSize:13,color:DG}}>⚠ Crea prima un articolo nelle altre sezioni</div>}</div>}
         {step==="idle"&&<Btn v="gold" onClick={()=>{if(!sec)return;sec==="echi"?startEchi():startRegular()}} disabled={!sec||(sec==="echi"&&secsWith.length===0)} style={{width:"100%",justifyContent:"center",padding:14,fontSize:15,borderRadius:10}}>◉ Avvia Scanner</Btn>}
-        {isLoading&&<Spinner label={step==="load_titles"?"GENERO TITOLI...":"SCRIVO L'EDITORIALE..."}/>}
+        {isLoading&&<Spinner label={step==="load_titles"?"CERCO NOTIZIE DI OGGI...":"SCRIVO L'EDITORIALE..."}/>}
         {err&&<div style={{padding:14,background:"#FDE8E8",borderRadius:10,marginTop:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><span style={{color:DG,fontSize:13,flex:1}}>⚠ {err}</span><Btn small v="gh" onClick={()=>{setErr(null);setStep("idle")}}>Riprova</Btn></div>}
         {step==="echi_pick"&&<div style={{marginTop:20,animation:"fadeUp 0.4s ease"}}><Lab>📜 Scegli la sezione sorgente</Lab>{secsWith.map(sId=>{const sc=SECTIONS.find(x=>x.id===sId);return <button key={sId} onClick={()=>echiPick(sId)} style={{display:"block",width:"100%",padding:"16px 20px",borderRadius:10,border:`1px solid ${BD}`,background:BW,cursor:"pointer",textAlign:"left",marginBottom:8,borderLeft:`3px solid ${sc?.color}`}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><span style={{fontSize:20}}>{sc?.icon}</span><span style={{fontWeight:700,fontSize:16,color:sc?.color}}>{sc?.name}</span></div>{bySection[sId].map((a,i)=><div key={i} style={{fontSize:13,color:TS,paddingLeft:30}}>• {a.title}</div>)}</button>})}<Btn small v="gh" onClick={reset}>✗ Annulla</Btn></div>}
         {step==="titles"&&<div style={{marginTop:20,animation:"fadeUp 0.4s ease"}}><Lab>{s?.icon} Scegli il titolo</Lab>{titles.map((t,i)=><button key={i} onClick={()=>generate(t)} style={{display:"block",width:"100%",padding:"14px 18px",borderRadius:10,border:`1px solid ${BD}`,background:BW,cursor:"pointer",textAlign:"left",marginBottom:8,borderLeft:`3px solid ${s?.color||AC}`}}><div style={{fontWeight:700,fontSize:15,color:TX,marginBottom:4}}>{t.title}</div><div style={{fontSize:12,color:TD}}>{t.angle}</div></button>)}<div style={{marginTop:12,display:"flex",gap:8}}><Btn small v="gh" onClick={()=>{setStep(sec==="echi"?"echi_pick":"idle");setTitles([])}}>← Indietro</Btn><Btn small v="gh" onClick={sec==="echi"?()=>echiPick(echiSrc):startRegular}>↻ Rigenera</Btn><Btn small v="gh" onClick={reset}>✗ Annulla</Btn></div></div>}
@@ -205,7 +283,7 @@ function AdminApp({password}){
         <div style={{fontSize:11,color:TD,fontFamily:"'Orbitron'"}}>{fS(new Date())}</div>
       </header>
       <main style={{maxWidth:860,margin:"0 auto",padding:"28px 20px 50px"}}>
-        {ed?<EditorView/>:view==="scanner"?<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◎</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Scanner</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Genera bozze con AI</p></div></div><ScannerView/></>:<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◫</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Dashboard</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Gestisci i tuoi articoli</p></div></div><DashView/></>}
+        {ed?<EditorView/>:view==="scanner"?<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◎</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Scanner</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Cerca notizie di oggi e genera bozze</p></div></div><ScannerView/></>:<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◫</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Dashboard</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Gestisci i tuoi articoli</p></div></div><DashView/></>}
       </main>
       <footer style={{textAlign:"center",padding:"16px",borderTop:`1px solid ${BD}`,fontSize:11,color:TD,fontStyle:"italic"}}>La Specola — Osservare oggi per comprendere il domani</footer>
     </div>
