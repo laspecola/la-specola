@@ -85,8 +85,8 @@ function AdminApp({password}){
     await fetchArts();setEd(null);fl("Eliminato","err");
   };
 
-  const scanAI=async(prompt,model)=>{
-    const r=await fetch("/api/scan",{method:"POST",headers,body:JSON.stringify({prompt,model})});
+  const scanAI=async(prompt,model,search=true)=>{
+    const r=await fetch("/api/scan",{method:"POST",headers,body:JSON.stringify({prompt,model,search})});
     const d=await r.json();
     if(d.error)throw new Error(d.error);
     return d.text;
@@ -167,7 +167,7 @@ Rispondi SOLO con JSON array:
       }catch(e){setErr(e.message);setStep("echi_pick")}
     };
 
-    // ── PROMPT: genera articolo completo ──
+    // ── PROMPT: genera articolo in 2 fasi ──
     const generate=async(tObj)=>{
       setSelTitle(tObj);setStep("generating");setErr(null);
       const isE=sec==="echi";
@@ -177,120 +177,130 @@ Rispondi SOLO con JSON array:
         ctx="\nArticoli di riferimento della giornata: "+src.map(a=>'"'+a.title+'"').join(", ");
       }
       const dataOggi = todayIT();
-      const sectionPrompts = {
-        attualita: `Sei un editorialista senior di una rivista italiana di approfondimento politico-economico. Scrivi un articolo su "${tObj.title}".
 
-STRUTTURA OBBLIGATORIA DELL'ARTICOLO:
+      try{
+        // ═══ FASE 1: RICERCA FATTI (con web search) ═══
+        const promptRicerca = `Oggi è il ${dataOggi}. Cerca sul web tutte le informazioni disponibili su questo tema: "${tObj.title}" (${tObj.angle}).
+${ctx}
+${focus.trim() ? "Focus: " + focus : ""}
 
-PARAGRAFO 1 — L'APERTURA (80-100 parole): Presenta il fatto centrale con precisione chirurgica. Data, luogo, protagonisti, cosa è successo. Nessuna retorica, nessun commento. Solo il fatto nudo, scritto in modo che il lettore capisca immediatamente di cosa si parla.
+Cerca su ANSA, Corriere della Sera, Repubblica, Il Sole 24 Ore, Sky TG24 e altre fonti autorevoli.
 
-PARAGRAFO 2 — IL CONTESTO (100-120 parole): Spiega cosa c'era PRIMA di questa notizia. Quali sono i precedenti? Qual era lo stato della questione fino a ieri? Il lettore deve capire perché questa notizia è importante e cosa cambia rispetto alla situazione precedente.
+Produci un DOSSIER COMPLETO con:
+1. FATTI ACCERTATI: cosa è successo, quando, dove, chi sono i protagonisti. Date e dati precisi.
+2. DICHIARAZIONI: chi ha detto cosa, citazioni testuali se disponibili, con fonte.
+3. CONTESTO: cosa c'era prima, quali sono i precedenti, perché questa notizia è importante.
+4. POSIZIONI CONTRASTANTI: chi è a favore, chi è contro, quali sono le contraddizioni.
+5. DATI E NUMERI: statistiche, cifre economiche, dati di mercato, percentuali se pertinenti.
+6. LIMITI E INCERTEZZE: cosa non si sa ancora, cosa è controverso, dove le fonti divergono.
 
-PARAGRAFO 3 — LE POSIZIONI IN CAMPO (120-150 parole): Chi dice cosa? Riporta le dichiarazioni e le posizioni dei protagonisti. Evidenzia le contraddizioni tra le versioni. Non prendere posizione, esponi i fatti e lascia che le contraddizioni parlino da sole.
+Scrivi in italiano. Sii il più completo e dettagliato possibile. Questo dossier servirà come base per scrivere un articolo di analisi.`;
 
-PARAGRAFO 4 — L'ANALISI (150-180 parole): Questa è la parte più importante. Spiega PERCHÉ le cose stanno così. Quali sono gli interessi in gioco? Quali le pressioni non dette? Quali i calcoli politici o economici dietro le dichiarazioni ufficiali? Usa dati, numeri, precedenti storici. Qui il lettore deve trovare qualcosa che non ha letto altrove.
+        const fatti = await scanAI(promptRicerca, model, true);
 
-PARAGRAFO 5 — LE IMPLICAZIONI (100-120 parole): Cosa succede adesso? Quali sono gli scenari possibili? Cosa rischia chi? Chi guadagna? Non fare previsioni azzardate, ma indica le variabili da osservare.
+        // ═══ FASE 2: SCRITTURA ARTICOLO (senza web search, tutti i token per scrivere) ═══
+        const sectionPrompts = {
+          attualita: `Sei un editorialista senior di una rivista italiana di approfondimento politico-economico.
 
-PARAGRAFO 6 — LA CHIUSURA (80-100 parole): Una riflessione sobria che sintetizzi la tesi dell'articolo. NON una frase a effetto. Una conclusione che il lettore possa portarsi via come chiave di lettura. Deve contenere un'idea precisa, non un sentimento vago.
+STRUTTURA OBBLIGATORIA (6 paragrafi):
 
-TOTALE: minimo 800 parole, ideale 900.
+PARAGRAFO 1 — L'APERTURA (80-100 parole): Il fatto centrale con precisione. Data, luogo, protagonisti, cosa è successo. Nessuna retorica. Solo il fatto nudo.
 
-TONO: Sobrio, analitico, mai enfatico. Scrivi come chi conosce bene la materia e la spiega a un lettore intelligente. Mai moralismi, mai slogan, mai cliché giornalistici ("passerà alla storia", "è un fatto epocale", "il tempo dirà"). Separa sempre i fatti dalle opinioni. Quando analizzi, argomenta. Quando concludi, abbi una tesi.`,
+PARAGRAFO 2 — IL CONTESTO (100-120 parole): Cosa c'era PRIMA. Precedenti, stato della questione fino a ieri. Perché questa notizia è importante.
 
-        motori: `Sei un editorialista senior del settore automotive e motociclistico. Scrivi un articolo su "${tObj.title}".
+PARAGRAFO 3 — LE POSIZIONI IN CAMPO (120-150 parole): Chi dice cosa. Dichiarazioni, posizioni, contraddizioni tra le versioni. Non prendere posizione.
 
-STRUTTURA OBBLIGATORIA DELL'ARTICOLO:
+PARAGRAFO 4 — L'ANALISI (150-180 parole): PERCHÉ le cose stanno così. Interessi in gioco, pressioni non dette, calcoli dietro le dichiarazioni. Dati, numeri, precedenti. Il lettore deve trovare qualcosa che non ha letto altrove.
 
-PARAGRAFO 1 — IL FATTO (80-100 parole): Cosa è stato annunciato, presentato, lanciato o deciso. Dati tecnici essenziali: modello, motorizzazione, prezzo, data di disponibilità se pertinenti. Nessun entusiasmo da comunicato stampa.
+PARAGRAFO 5 — LE IMPLICAZIONI (100-120 parole): Scenari possibili, rischi, variabili da osservare. Niente previsioni azzardate.
 
-PARAGRAFO 2 — IL CONTESTO DI MERCATO (100-120 parole): Dove si colloca questa notizia nel panorama attuale. Cosa fanno i concorrenti. Come sta andando quel segmento di mercato. Dati di vendita se disponibili.
+PARAGRAFO 6 — CHIUSURA (80-100 parole): Sintesi della tesi, derivata dall'analisi. NON una frase a effetto. Una idea precisa.
 
-PARAGRAFO 3 — L'ANALISI TECNICA (120-150 parole): Cosa significa concretamente per chi guida, compra o usa. Vantaggi reali, limiti dichiarati e non dichiarati, confronto con le alternative. Se è un'innovazione, spiega cosa cambia davvero nella pratica quotidiana.
+TONO: Sobrio, analitico. Mai enfatico, mai moralismi, mai cliché giornalistici.`,
 
-PARAGRAFO 4 — NORMATIVA E COSTI (100-120 parole): Impatto su incentivi, normative emissioni, costi di gestione, assicurazione, manutenzione. L'aspetto economico concreto che interessa a chi deve decidere un acquisto.
+          motori: `Sei un editorialista senior del settore automotive e motociclistico.
 
-PARAGRAFO 5 — SCENARIO E TENDENZE (100-120 parole): Dove va il settore. Questa notizia conferma o contraddice una tendenza? Quali altri costruttori seguiranno? Cosa aspettarsi nei prossimi 12-18 mesi.
+STRUTTURA OBBLIGATORIA (6 paragrafi):
 
-PARAGRAFO 6 — CHIUSURA (80-100 parole): Giudizio misurato sul significato complessivo della notizia. Non entusiasmo, non stroncatura, ma un'opinione fondata sui fatti esposti.
+PARAGRAFO 1 — IL FATTO (80-100 parole): Annuncio, lancio, decisione. Dati tecnici essenziali. No comunicato stampa.
 
-TOTALE: minimo 800 parole.
+PARAGRAFO 2 — IL CONTESTO DI MERCATO (100-120 parole): Panorama attuale, concorrenti, andamento del segmento.
 
-TONO: Competente, concreto, mai promozionale. Scrivi per chi deve capire, non per chi vuole sognare. Zero hype, zero "rivoluzione", zero "game changer". I fatti e i numeri parlano da soli.`,
+PARAGRAFO 3 — L'ANALISI TECNICA (120-150 parole): Significato concreto per chi guida o compra. Vantaggi reali, limiti, confronto.
 
-        tecnologia: `Sei un editorialista senior specializzato in tecnologia e innovazione. Scrivi un articolo su "${tObj.title}".
+PARAGRAFO 4 — NORMATIVA E COSTI (100-120 parole): Incentivi, emissioni, costi di gestione, aspetto economico concreto.
 
-STRUTTURA OBBLIGATORIA DELL'ARTICOLO:
+PARAGRAFO 5 — SCENARIO (100-120 parole): Tendenze del settore, cosa aspettarsi nei prossimi 12-18 mesi.
 
-PARAGRAFO 1 — IL FATTO (80-100 parole): Cosa è stato annunciato, rilasciato, scoperto o regolamentato. Chi l'ha fatto, quando, in che contesto. Dati specifici: versioni, prestazioni, disponibilità, costi.
+PARAGRAFO 6 — CHIUSURA (80-100 parole): Giudizio misurato fondato sui fatti esposti.
 
-PARAGRAFO 2 — COME FUNZIONA (100-120 parole): Spiegazione tecnica accessibile. Non banalizzare, ma rendila comprensibile a un lettore colto non specialista. Cosa fa concretamente? Come si differenzia da ciò che esisteva prima?
+TONO: Competente, concreto, mai promozionale. Zero hype.`,
 
-PARAGRAFO 3 — IMPATTO REALE (120-150 parole): Chi ne beneficia e chi ne è minacciato. Effetti su utenti, aziende, lavoratori, privacy, sicurezza. Distingui tra ciò che è reale ora e ciò che è promessa futura.
+          tecnologia: `Sei un editorialista senior di tecnologia e innovazione.
 
-PARAGRAFO 4 — IL QUADRO COMPETITIVO (100-120 parole): Cosa fanno i concorrenti. Come reagisce il mercato. Ci sono brevetti, cause, regolamenti in gioco? Questa tecnologia è un'evoluzione o una discontinuità?
+STRUTTURA OBBLIGATORIA (6 paragrafi):
 
-PARAGRAFO 5 — RISCHI E LIMITI (100-120 parole): Cosa può andare storto. Quali sono i limiti tecnici non detti. Ci sono rischi etici, di sicurezza, di concentrazione di mercato? Non fare l'avvocato del diavolo per principio, ma esponi i lati critici reali.
+PARAGRAFO 1 — IL FATTO (80-100 parole): Annuncio, rilascio, scoperta. Dati specifici.
 
-PARAGRAFO 6 — CHIUSURA (80-100 parole): Sintesi del significato della notizia nel contesto più ampio dell'innovazione. Tesi precisa, non retorica.
+PARAGRAFO 2 — COME FUNZIONA (100-120 parole): Spiegazione tecnica accessibile. Cosa fa, come si differenzia.
 
-TOTALE: minimo 800 parole.
+PARAGRAFO 3 — IMPATTO REALE (120-150 parole): Chi ne beneficia, chi è minacciato. Reale vs promessa futura.
 
-TONO: Informato, preciso, mai entusiasta. Zero "rivoluzione", "svolta epocale", "cambierà tutto". Se è importante, i fatti lo dimostreranno senza bisogno di aggettivi.`,
+PARAGRAFO 4 — QUADRO COMPETITIVO (100-120 parole): Concorrenti, brevetti, regolamenti. Evoluzione o discontinuità?
 
-        echi: `Sei un editorialista esperto di storia contemporanea. Scrivi un articolo su "${tObj.title}" che colleghi un fatto attuale a un precedente storico.
+PARAGRAFO 5 — RISCHI E LIMITI (100-120 parole): Limiti tecnici, rischi etici, concentrazione di mercato.
 
-STRUTTURA OBBLIGATORIA DELL'ARTICOLO:
+PARAGRAFO 6 — CHIUSURA (80-100 parole): Tesi precisa, non retorica.
 
-PARAGRAFO 1 — LA NOTIZIA DI OGGI (80-100 parole): Il fatto attuale da cui parti. Cosa è successo, quando, chi sono i protagonisti. Scrivi come se il lettore non avesse letto i giornali oggi.
+TONO: Informato, preciso, mai entusiasta. Zero "rivoluzione".`,
 
-PARAGRAFO 2 — IL PARALLELO STORICO (120-150 parole): Presenta il fatto storico con cui costruisci il confronto. Date precise, nomi, luoghi, contesto dell'epoca. Il lettore deve capire cosa accadde allora con la stessa chiarezza con cui ha capito cosa succede oggi.
+          echi: `Sei un editorialista esperto di storia contemporanea.
 
-PARAGRAFO 3 — LE SOMIGLIANZE (100-120 parole): Cosa accomuna i due eventi. Dinamiche simili, errori ripetuti, meccanismi analoghi. Sii specifico: non "la storia si ripete" in astratto, ma mostra concretamente cosa si ripete e perché.
+STRUTTURA OBBLIGATORIA (6 paragrafi):
 
-PARAGRAFO 4 — LE DIFFERENZE (100-120 parole): Cosa è diverso. Contesto geopolitico, tecnologico, sociale. Questa parte è cruciale: impedisce al paragone di diventare una forzatura. Il lettore deve capire i limiti del confronto.
+PARAGRAFO 1 — LA NOTIZIA DI OGGI (80-100 parole): Il fatto attuale. Cosa, quando, chi.
 
-PARAGRAFO 5 — COSA CI INSEGNA (120-150 parole): Quale lezione concreta si può trarre. Non moralismi vaghi ("la storia insegna"), ma indicazioni precise: cosa funzionò allora e potrebbe funzionare oggi, cosa fallì e rischia di fallire di nuovo.
+PARAGRAFO 2 — IL PARALLELO STORICO (120-150 parole): Il fatto storico. Date, nomi, luoghi, contesto dell'epoca.
 
-PARAGRAFO 6 — CHIUSURA (80-100 parole): Riflessione sobria su cosa la prospettiva storica aggiunge alla comprensione del presente. Una tesi precisa, non una sentenza.
+PARAGRAFO 3 — LE SOMIGLIANZE (100-120 parole): Cosa accomuna i due eventi. Dinamiche concrete, non astratte.
 
-TOTALE: minimo 800 parole.
+PARAGRAFO 4 — LE DIFFERENZE (100-120 parole): Cosa è diverso. Limiti del confronto.
 
-TONO: Colto ma accessibile, mai professorale. La storia è uno strumento di comprensione, non di esibizione culturale. Evita anacronismi e analogie forzate.`
-      };
+PARAGRAFO 5 — COSA CI INSEGNA (120-150 parole): Lezione concreta, non moralismo vago.
 
-      const promptArticolo = `Oggi è il ${dataOggi}. CERCA SUL WEB i dettagli aggiornati e approfonditi sulla notizia prima di scrivere.
+PARAGRAFO 6 — CHIUSURA (80-100 parole): Riflessione sobria. Tesi precisa.
+
+TONO: Colto, accessibile, mai professorale. No anacronismi.`
+        };
+
+        const promptArticolo = `Scrivi un articolo di analisi su "${tObj.title}" per la sezione "${s.name}" de La Specola.
+
+ECCO IL DOSSIER CON TUTTI I FATTI VERIFICATI DA CUI DEVI PARTIRE:
+---
+${fatti}
+---
 
 ${sectionPrompts[sec] || sectionPrompts.attualita}
 
-Taglio editoriale: ${tObj.angle}${ctx}
-${focus.trim() ? "Focus specifico: " + focus : ""}
+Taglio: ${tObj.angle}
+${focus.trim() ? "Focus: " + focus : ""}
 
 REGOLE ASSOLUTE:
-- MINIMO 800 parole. Se scrivi meno di 800 parole, l'articolo è INSUFFICIENTE.
-- NON includere la firma "di Francesco Pasquale" — è gestita dal sistema.
-- NON inventare fatti: basati SOLO su notizie reali verificate.
-- Segui la struttura a 6 paragrafi indicata sopra.
+- MINIMO 800 parole, ideale 900-1000. Se scrivi meno di 800 è INSUFFICIENTE.
+- Basa l'articolo ESCLUSIVAMENTE sui fatti del dossier sopra. Non aggiungere informazioni che non sono nel dossier.
+- NON includere firma "di Francesco Pasquale".
 
-VINCOLI DI RIGORE ANALITICO — FONDAMENTALI:
-
-1. INTENZIONI E STRATEGIE: Non attribuire ai leader intenzioni, strategie o calcoli politici come fatti acquisiti, salvo che tali intenzioni risultino da dichiarazioni esplicite o da elementi oggettivi chiaramente esposti nel testo. Quando proponi un'interpretazione, segnala esplicitamente che si tratta di una lettura possibile e non di un dato certo. Formulazioni come "Meloni sceglie strategicamente", "il governo ha saputo leggere il momento", "la mossa rivela la maturità geopolitica" sono VIETATE se non dimostrate da fatti espliciti.
-
-2. LINGUAGGIO RIVELATORIO: Evita frasi con struttura rivelatoria o allusiva come "dietro le quinte", "si cela", "in realtà", "il vero significato", "ciò che non viene detto", salvo che il testo dimostri in modo puntuale ciò che afferma. Se non hai prove, non suggerire misteri.
-
-3. CHIUSURE: Non usare chiuse aforistiche, sloganistiche o ad effetto. La conclusione DEVE derivare logicamente dall'analisi e restare proporzionata agli elementi disponibili. Vietate formule come "America alone", "la storia insegna", "il tempo dirà", "è questa la vera lezione". La chiusura deve essere una sintesi argomentata, non una battuta.
-
-4. SEPARAZIONE FATTO/INFERENZA/GIUDIZIO: Distingui sempre tra ciò che è un fatto documentato, ciò che è una tua inferenza ragionevole, e ciò che è un giudizio di valore. Le inferenze vanno introdotte con cautela linguistica ("è plausibile che", "i fatti suggeriscono", "una lettura possibile è"). I giudizi di valore vanno evitati o dichiarati come tali.
-
-5. ATTRITO ARGOMENTATIVO: L'articolo DEVE mettere alla prova la propria tesi. Per ogni interpretazione proposta, esponi almeno un elemento che la contraddice o la limita. Un articolo che conferma la propria tesi dall'inizio alla fine senza mai metterla in discussione non è analisi, è propaganda.
-
-6. TITOLO: Il titolo deve descrivere il problema, non risolverlo. Un titolo che contiene già la conclusione ("quando la crisi diventa opportunità") è un titolo da commento, non da analisi. Preferisci titoli che pongono una domanda implicita o descrivono una tensione irrisolta.
-
-AUTOCONTROLLO FINALE: Prima di consegnare il testo, rileggi ogni paragrafo e riscrivi tutte le frasi che contengono: giudizi politici impliciti, intenzioni attribuite senza prove, causalità non dimostrate, formule retoriche da editoriale, o conclusioni sproporzionate rispetto ai fatti esposti.
+VINCOLI DI RIGORE:
+- Non attribuire intenzioni o strategie ai leader come fatti acquisiti. Segnala le interpretazioni come tali.
+- Evita "dietro le quinte", "si cela", "in realtà", "il vero significato" senza prove puntuali.
+- Chiusura derivata dall'analisi, non frase ad effetto.
+- Distingui sempre fatti, inferenze e giudizi. Inferenze introdotte con "è plausibile che", "i fatti suggeriscono".
+- Metti alla prova la tua tesi: esponi almeno un elemento che la contraddice o la limita.
+- Titolo che descrive il problema, non che lo risolve.
+- Rileggi e riscrivi ogni frase con giudizi impliciti o retorica da editoriale.
 ${artPrompt}`;
 
-      try{
-        const t=await scanAI(promptArticolo,model);
+        const t = await scanAI(promptArticolo, model, false);
         const parsed=parseArt(t,tObj.title);
         setResult({...parsed,section:sec});setStep("preview");
       }catch(e){setErr(e.message);setStep("titles")}
@@ -309,7 +319,7 @@ ${artPrompt}`;
         <input value={focus} onChange={e=>setFocus(e.target.value)} placeholder="Es. dazi USA-Cina, Sinner, mercato auto elettriche..." style={{width:"100%",padding:"11px 16px",borderRadius:8,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:14,outline:"none",marginBottom:20}}/>
         {sec==="echi"&&step==="idle"&&<div style={{marginBottom:20,padding:16,background:BWM,borderRadius:10,border:`1px solid ${BDL}`}}><Lab>📜 Articoli di oggi come base</Lab>{secsWith.length>0?todayNonEchi.map((a,i)=>{const sc=SECTIONS.find(x=>x.id===a.section);return <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,marginBottom:4}}><span style={{color:sc?.color,fontSize:10}}>●</span><span style={{color:sc?.color,fontWeight:600,fontSize:11}}>{sc?.name}</span><span>{a.title}</span></div>}):<div style={{fontSize:13,color:DG}}>⚠ Crea prima un articolo nelle altre sezioni</div>}</div>}
         {step==="idle"&&<Btn v="gold" onClick={()=>{if(!sec)return;sec==="echi"?startEchi():startRegular()}} disabled={!sec||(sec==="echi"&&secsWith.length===0)} style={{width:"100%",justifyContent:"center",padding:14,fontSize:15,borderRadius:10}}>◉ Avvia Scanner</Btn>}
-        {isLoading&&<Spinner label={step==="load_titles"?"CERCO NOTIZIE DI OGGI...":"SCRIVO L'EDITORIALE..."}/>}
+        {isLoading&&<Spinner label={step==="load_titles"?"CERCO NOTIZIE DI OGGI...":"FASE 1: RICERCA FATTI... POI SCRITTURA"}/>}
         {err&&<div style={{padding:14,background:"#FDE8E8",borderRadius:10,marginTop:16,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><span style={{color:DG,fontSize:13,flex:1}}>⚠ {err}</span><Btn small v="gh" onClick={()=>{setErr(null);setStep("idle")}}>Riprova</Btn></div>}
         {step==="echi_pick"&&<div style={{marginTop:20,animation:"fadeUp 0.4s ease"}}><Lab>📜 Scegli la sezione sorgente</Lab>{secsWith.map(sId=>{const sc=SECTIONS.find(x=>x.id===sId);return <button key={sId} onClick={()=>echiPick(sId)} style={{display:"block",width:"100%",padding:"16px 20px",borderRadius:10,border:`1px solid ${BD}`,background:BW,cursor:"pointer",textAlign:"left",marginBottom:8,borderLeft:`3px solid ${sc?.color}`}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><span style={{fontSize:20}}>{sc?.icon}</span><span style={{fontWeight:700,fontSize:16,color:sc?.color}}>{sc?.name}</span></div>{bySection[sId].map((a,i)=><div key={i} style={{fontSize:13,color:TS,paddingLeft:30}}>• {a.title}</div>)}</button>})}<Btn small v="gh" onClick={reset}>✗ Annulla</Btn></div>}
         {step==="titles"&&<div style={{marginTop:20,animation:"fadeUp 0.4s ease"}}><Lab>{s?.icon} Scegli il titolo</Lab>{titles.map((t,i)=><button key={i} onClick={()=>generate(t)} style={{display:"block",width:"100%",padding:"14px 18px",borderRadius:10,border:`1px solid ${BD}`,background:BW,cursor:"pointer",textAlign:"left",marginBottom:8,borderLeft:`3px solid ${s?.color||AC}`}}><div style={{fontWeight:700,fontSize:15,color:TX,marginBottom:4}}>{t.title}</div><div style={{fontSize:12,color:TD}}>{t.angle}</div></button>)}<div style={{marginTop:12,display:"flex",gap:8}}><Btn small v="gh" onClick={()=>{setStep(sec==="echi"?"echi_pick":"idle");setTitles([])}}>← Indietro</Btn><Btn small v="gh" onClick={sec==="echi"?()=>echiPick(echiSrc):startRegular}>↻ Rigenera</Btn><Btn small v="gh" onClick={reset}>✗ Annulla</Btn></div></div>}
