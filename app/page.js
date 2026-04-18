@@ -186,21 +186,25 @@ function ArticleFull({article,allArticles,onBack,onReadMore}){
 }
 
 // ── Chi siamo ──
-function ChiSiamo({onBack,settings}){
+function ChiSiamo({onBack,articles}){
+  const chiArt = (articles||[]).find(a=>a.section==="chisiamo");
+  const projDesc = chiArt?.body || "La Specola nasce dall'idea di osservare il presente con gli strumenti dell'analisi e del rigore. Ogni sera, editoriali su attualità, motori, tecnologia, arte e storia offrono al lettore una bussola per orientarsi nel flusso delle notizie.";
+  const edName = chiArt?.title || "Francesco Pasquale";
+  const edBio = chiArt?.subtitle || "Analista e osservatore del presente. Appassionato di tecnologia, motori e storia, crede che comprendere il passato sia il modo migliore per leggere il futuro.";
   return(
     <div style={{maxWidth:720,margin:"0 auto",padding:"40px 20px",animation:"fadeUp 0.4s ease"}}>
       <button onClick={onBack} style={{background:"none",border:"none",color:AC,fontSize:13,fontWeight:600,cursor:"pointer",marginBottom:28,display:"flex",alignItems:"center",gap:6}}>← Torna alla homepage</button>
       <h1 style={{fontFamily:"'Orbitron'",fontSize:26,fontWeight:800,color:TX,letterSpacing:2,marginBottom:28}}>Chi siamo</h1>
       <div style={{background:CARD,borderRadius:12,border:`1px solid ${BD}`,padding:28,marginBottom:24}}>
         <h2 style={{fontFamily:"'Orbitron'",fontSize:14,fontWeight:700,color:AC,letterSpacing:1,marginBottom:14}}>Il progetto</h2>
-        <p style={{fontSize:15,color:TS,lineHeight:1.9}}>{settings.project_description||"La Specola nasce dall'idea di osservare il presente con gli strumenti dell'analisi e del rigore. Ogni sera, quattro editoriali su attualità, motori, tecnologia e storia offrono al lettore una bussola per orientarsi nel flusso delle notizie."}</p>
+        <p style={{fontSize:15,color:TS,lineHeight:1.9,whiteSpace:"pre-wrap"}}>{projDesc}</p>
       </div>
       <div style={{background:CARD,borderRadius:12,border:`1px solid ${BD}`,padding:28,display:"flex",gap:24,alignItems:"flex-start",flexWrap:"wrap"}}>
         <div style={{width:90,height:90,borderRadius:"50%",background:`linear-gradient(135deg,${AC},#B8860B)`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:32,fontWeight:900,color:"#fff",flexShrink:0}}>FP</div>
         <div style={{flex:1,minWidth:220}}>
           <h2 style={{fontFamily:"'Orbitron'",fontSize:14,fontWeight:700,color:AC,letterSpacing:1,marginBottom:6}}>L'editore</h2>
-          <h3 style={{fontSize:18,fontWeight:700,color:TX,marginBottom:10}}>{settings.editor_name||"Francesco Pasquale"}</h3>
-          <p style={{fontSize:15,color:TS,lineHeight:1.9}}>{settings.editor_bio||"Analista e osservatore del presente. Appassionato di tecnologia, motori e storia, crede che comprendere il passato sia il modo migliore per leggere il futuro."}</p>
+          <h3 style={{fontSize:18,fontWeight:700,color:TX,marginBottom:10}}>{edName}</h3>
+          <p style={{fontSize:15,color:TS,lineHeight:1.9,whiteSpace:"pre-wrap"}}>{edBio}</p>
         </div>
       </div>
       <div style={{marginTop:24,padding:"14px 18px",background:LIGHT,borderRadius:8,fontSize:12,color:TD,lineHeight:1.6}}>
@@ -268,7 +272,6 @@ function Footer({onChiSiamo}){
 
 export default function HomePage(){
   const [articles,setArticles]=useState([]);
-  const [settings,setSettings]=useState({});
   const [loading,setLoading]=useState(true);
   const [sec,setSec]=useState("all");
   const [page,setPage]=useState("home");
@@ -278,20 +281,15 @@ export default function HomePage(){
     const run=async()=>{
       const { getSupabase } = await import("@/lib/supabase");
       const sb=getSupabase();
-      const [artRes,setRes] = await Promise.all([
-        sb.from("articles").select("*").eq("status","published").order("published_at",{ascending:false}),
-        sb.from("site_settings").select("*")
-      ]);
+      const artRes = await sb.from("articles").select("*").eq("status","published").order("published_at",{ascending:false});
       setArticles(artRes.data||[]);
-      const s={};(setRes.data||[]).forEach(r=>s[r.key]=r.value);
-      setSettings(s);
       setLoading(false);
     };
     run();
   },[]);
 
   const todayISO=new Date().toISOString().split("T")[0];
-  const todayArticles=articles.filter(a=>a.edition_date===todayISO);
+  const todayArticles=articles.filter(a=>a.edition_date===todayISO&&a.section!=="chisiamo");
   const shown=sec==="all"?todayArticles:todayArticles.filter(a=>a.section===sec);
   const today=fDate(new Date());
   const goArticle=(a)=>{setCurrentArticle(a);setPage("article");window.scrollTo(0,0)};
@@ -299,7 +297,7 @@ export default function HomePage(){
   const goChiSiamo=()=>{setPage("chi-siamo");window.scrollTo(0,0)};
   const goArchivio=()=>{setPage("archivio");window.scrollTo(0,0)};
 
-  if(page==="chi-siamo")return(<div style={{minHeight:"100vh"}}><ChiSiamo onBack={goHome} settings={settings}/><Footer onChiSiamo={goChiSiamo}/></div>);
+  if(page==="chi-siamo")return(<div style={{minHeight:"100vh"}}><ChiSiamo onBack={goHome} articles={articles}/><Footer onChiSiamo={goChiSiamo}/></div>);
   if(page==="archivio")return(<div style={{minHeight:"100vh"}}><Archivio articles={articles} onBack={goHome} onReadMore={goArticle}/><Footer onChiSiamo={goChiSiamo}/></div>);
   if(page==="article"&&currentArticle)return(<div style={{minHeight:"100vh"}}><ArticleFull article={currentArticle} allArticles={articles} onBack={goHome} onReadMore={goArticle}/><Footer onChiSiamo={goChiSiamo}/></div>);
 
