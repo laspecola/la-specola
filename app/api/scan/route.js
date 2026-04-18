@@ -9,13 +9,27 @@ export async function POST(req) {
   var body = await req.json();
   var prompt = body.prompt;
   var model = body.model;
+  var useSearch = body.search !== false;
 
   try {
     if (model === "claude" || !model) {
       var key = process.env.ANTHROPIC_API_KEY;
       if (!key) throw new Error("ANTHROPIC_API_KEY non configurata");
 
-      var systemPrompt = "Sei un editorialista italiano rigoroso. Usa SEMPRE web_search per cercare fatti reali e aggiornati prima di rispondere. Fai almeno 3 ricerche web. Scrivi SEMPRE in italiano. Quando ti viene chiesto di rispondere con JSON, rispondi SOLO con JSON valido senza altro testo. Quando ti viene chiesto di scrivere un articolo, segui scrupolosamente le istruzioni del prompt.";
+      var systemPrompt = useSearch
+        ? "Sei un giornalista investigativo italiano. Usa SEMPRE web_search per cercare fatti reali e aggiornati. Fai almeno 3 ricerche web. Scrivi in italiano. Quando ti viene chiesto JSON, rispondi SOLO con JSON valido."
+        : "Sei un editorialista italiano di alto livello. Scrivi in italiano. Segui scrupolosamente ogni istruzione del prompt. Non inventare fatti. Rispetta la lunghezza minima richiesta.";
+
+      var apiBody = {
+        model: "claude-sonnet-4-20250514",
+        max_tokens: useSearch ? 4096 : 8192,
+        system: systemPrompt,
+        messages: [{ role: "user", content: prompt }]
+      };
+
+      if (useSearch) {
+        apiBody.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
+      }
 
       var r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -24,13 +38,7 @@ export async function POST(req) {
           "x-api-key": key,
           "anthropic-version": "2023-06-01"
         },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4096,
-          system: systemPrompt,
-          messages: [{ role: "user", content: prompt }],
-          tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }]
-        })
+        body: JSON.stringify(apiBody)
       });
       if (!r.ok) {
         var errText = await r.text();
@@ -51,13 +59,12 @@ export async function POST(req) {
     if (model === "gemini") {
       var key = process.env.GEMINI_API_KEY;
       if (!key) throw new Error("GEMINI_API_KEY non configurata");
+      var gBody = { contents: [{ parts: [{ text: prompt }] }] };
+      if (useSearch) gBody.tools = [{ google_search: {} }];
       var r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + key, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          tools: [{ google_search: {} }]
-        })
+        body: JSON.stringify(gBody)
       });
       if (!r.ok) throw new Error("Gemini API " + r.status);
       var d = await r.json();
@@ -74,8 +81,8 @@ export async function POST(req) {
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "user", content: "Oggi e il " + new Date().toISOString().split("T")[0] + ". Cerca notizie di oggi.\n\n" + prompt }],
-          max_tokens: 1500
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 3000
         })
       });
       if (!r.ok) throw new Error("OpenAI API " + r.status);
