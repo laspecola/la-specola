@@ -72,8 +72,20 @@ function AdminApp({password}){
   const saveArt=async(article)=>{
     const isNew=!article.id||article._isNew;
     const method=isNew?"POST":"PUT";
-    const body={...article,links:article.links,date:article.edition_date||article.date||tod()};
-    const r=await fetch("/api/articles",{method,headers,body:JSON.stringify(body)});
+    // Solo i campi che servono — evita di mandare created_at, updated_at ecc.
+    const clean={
+      section:article.section,
+      title:article.title,
+      subtitle:article.subtitle||"",
+      body:article.body,
+      author:article.author||"Francesco Pasquale",
+      status:article.status||"draft",
+      date:article.edition_date||article.date||tod(),
+      links:article.links||[],
+      audio_url:article.audio_url||null,
+    };
+    if(!isNew)clean.id=article.id;
+    const r=await fetch("/api/articles",{method,headers,body:JSON.stringify(clean)});
     const d=await r.json();
     if(d.error){fl("Errore: "+d.error,"err");return;}
     await fetchArts();setEd(null);
