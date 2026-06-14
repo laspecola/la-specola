@@ -301,7 +301,7 @@ function Footer({onChiSiamo}){
             <div className="footer-logo">S</div>
             <div>
               <div className="footer-name">LA SPECOLA</div>
-              <div className="footer-motto">Osservare oggi per comprendere il domani</div>
+              <div className="footer-motto">Osservare l'oggi per comprendere il domani</div>
             </div>
           </div>
           <div className="footer-social">
