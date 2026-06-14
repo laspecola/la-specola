@@ -33,7 +33,7 @@ function Hero(){
   return(
     <header className="hero">
       <div className="hero-inner">
-        <div className="hero-sub">Osservare oggi per comprendere il domani</div>
+        <div className="hero-sub">Osservare l'oggi per comprendere il domani</div>
         <h1 className="hero-title">LA SPECOLA</h1>
         <div className="hero-date">edizione del {today}</div>
       </div>
