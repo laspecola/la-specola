@@ -371,7 +371,7 @@ ${artPrompt}`;
       setUploading("");
     };
 
-    const DropZone=({kind,accept,label,url,setter})=>(
+    const dropZone=(kind,accept,label,url,setter)=>(
       <div style={{background:BWM,borderRadius:10,border:`1px solid ${BDL}`,padding:18,marginBottom:16}}>
         <Lab>{label} <span style={{color:BD,fontFamily:"'Titillium Web'",textTransform:"none",letterSpacing:0}}>(opzionale)</span></Lab>
         {url?<div>
@@ -401,13 +401,13 @@ ${artPrompt}`;
         <input value={sub} onChange={e=>setSub(e.target.value)} placeholder="Sottotitolo" style={{width:"100%",padding:"8px 0",border:"none",borderBottom:`1px solid ${BDL}`,background:"transparent",color:TS,fontSize:16,fontStyle:"italic",outline:"none",marginBottom:24}}/>
 
         {/* Immagine di copertina — sopra il testo */}
-        <DropZone kind="Immagine" accept=".jpg,.jpeg,.png,.webp,.gif" label="🖼 Immagine di copertina" url={imageUrl} setter={setImageUrl}/>
+        {dropZone("Immagine",".jpg,.jpeg,.png,.webp,.gif","🖼 Immagine di copertina",imageUrl,setImageUrl)}
 
         <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Scrivi l'editoriale..." style={{width:"100%",minHeight:420,padding:20,borderRadius:10,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:15,lineHeight:1.85,resize:"vertical",outline:"none",marginBottom:6}}/>
         <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginBottom:24,fontSize:11,color:TD,fontFamily:"'Orbitron'"}}><span>{w} parole</span><span style={{color:w>=800&&w<=1100?OK:w>1100?DG:AC}}>{w<800?`mancano ${800-w}`:w>1100?`${w-1100} in eccesso`:"✓ ok"}</span></div>
 
-        <DropZone kind="Audio" accept=".mp3,.wav,.ogg,.m4a" label="🎵 Traccia audio" url={audioUrl} setter={setAudioUrl}/>
-        <DropZone kind="Video" accept=".mp4,.webm,.mov" label="🎬 Video" url={videoUrl} setter={setVideoUrl}/>
+        {dropZone("Audio",".mp3,.wav,.ogg,.m4a","🎵 Traccia audio",audioUrl,setAudioUrl)}
+        {dropZone("Video",".mp4,.webm,.mov","🎬 Video",videoUrl,setVideoUrl)}
 
         <div style={{padding:14,background:BWM,borderRadius:8,border:`1px solid ${BDL}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><span style={{fontSize:10,color:TD,fontFamily:"'Orbitron'",letterSpacing:1}}>AUTORE</span><div style={{fontSize:15,color:TX,fontWeight:600,marginTop:2}}>Francesco Pasquale</div></div><div style={{width:38,height:38,borderRadius:"50%",background:`linear-gradient(135deg,${AC},${sc?.color||BD})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#fff"}}>FP</div></div>
       </div>
