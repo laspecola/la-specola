@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 
 function checkAuth(req) {
-  const auth = req.headers.get("x-admin-password");
-  return auth === process.env.ADMIN_PASSWORD;
+  return req.headers.get("x-admin-password") === process.env.ADMIN_PASSWORD;
 }
 
 export async function GET(req) {
@@ -35,6 +34,8 @@ export async function POST(req) {
     author: body.author || "Francesco Pasquale",
     status: body.status || "draft",
     audio_url: body.audio_url || null,
+    image_url: body.image_url || null,
+    video_url: body.video_url || null,
     published_at: body.status === "published" ? new Date().toISOString() : null,
   };
   const { data, error } = await sb.from("articles").insert(article).select().single();
@@ -56,6 +57,8 @@ export async function PUT(req) {
   }
   if (updates.date) { updates.edition_date = updates.date; delete updates.date; }
   if (updates.audio_url === "") updates.audio_url = null;
+  if (updates.image_url === "") updates.image_url = null;
+  if (updates.video_url === "") updates.video_url = null;
   delete updates._isNew;
   const { data, error } = await sb.from("articles").update(updates).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
