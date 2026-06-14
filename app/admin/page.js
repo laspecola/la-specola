@@ -366,7 +366,7 @@ ${artPrompt}`;
         const r=await fetch("/api/upload",{method:"POST",headers:{"x-admin-password":password},body:fd});
         const d=await r.json();
         if(d.error){fl("Errore upload: "+d.error,"err");}
-        else{setter(d.url);fl(kind+" caricato!");}
+        else{setter(d.url);fl(d.url?("OK URL: "+d.url.slice(-30)):"URL VUOTO dall'API!", d.url?"ok":"err");}
       }catch(err){fl("Errore: "+err.message,"err");}
       setUploading("");
     };
