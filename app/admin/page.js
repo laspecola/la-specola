@@ -351,6 +351,7 @@ ${artPrompt}`;
     const [imageUrl,setImageUrl]=useState(a.image_url||"");
     const [videoUrl,setVideoUrl]=useState(a.video_url||"");
     const [uploading,setUploading]=useState("");
+    const [uploadMsg,setUploadMsg]=useState("");
     const [saving,setSaving]=useState(false);
     const w=body.trim().split(/\s+/).filter(Boolean).length;
     const sc=SECTIONS.find(x=>x.id===sec);
@@ -360,14 +361,16 @@ ${artPrompt}`;
       const file=e.target.files?.[0];
       if(!file)return;
       setUploading(kind);
+      setUploadMsg("");
       try{
         const fd=new FormData();
         fd.append("file",file);
         const r=await fetch("/api/upload",{method:"POST",headers:{"x-admin-password":password},body:fd});
         const d=await r.json();
-        if(d.error){fl("Errore upload: "+d.error,"err");}
-        else{setter(d.url);fl(d.url?("OK URL: "+d.url.slice(-30)):"URL VUOTO dall'API!", d.url?"ok":"err");}
-      }catch(err){fl("Errore: "+err.message,"err");}
+        if(d.error){setUploadMsg("⚠ Errore: "+d.error);}
+        else if(!d.url){setUploadMsg("⚠ URL vuoto dall'API");}
+        else{setter(d.url);setUploadMsg("✓ "+kind+" caricato");}
+      }catch(err){setUploadMsg("⚠ Errore: "+err.message);}
       setUploading("");
     };
 
@@ -397,6 +400,7 @@ ${artPrompt}`;
           <div style={{display:"flex",gap:8}}>{a.id&&<Btn small v="dan" onClick={()=>delArt(a.id)}>🗑</Btn>}<Btn small v="gh" onClick={()=>doSave("draft")} disabled={saving}>{saving?"...":"💾 Salva"}</Btn><Btn v="ok" onClick={()=>doSave("published")} disabled={saving}>{saving?"...":"🚀 Pubblica"}</Btn></div>
         </div>
         <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>{SECTIONS.map(x=><button key={x.id} onClick={()=>setSec(x.id)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${sec===x.id?x.color:BD}`,background:sec===x.id?x.color+"0D":"transparent",color:sec===x.id?x.color:TD,cursor:"pointer",fontWeight:600,fontSize:12}}>{x.icon} {x.name}</button>)}</div>
+        {uploadMsg&&<div style={{padding:"8px 14px",borderRadius:8,marginBottom:14,fontSize:13,fontWeight:600,background:uploadMsg.startsWith("✓")?"#E8F5E9":"#FDE8E8",color:uploadMsg.startsWith("✓")?OK:DG}}>{uploadMsg}</div>}
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titolo" style={{width:"100%",padding:"12px 0",border:"none",borderBottom:`2px solid ${sc?.color||BD}`,background:"transparent",color:TX,fontFamily:"'Orbitron'",fontSize:22,fontWeight:700,outline:"none",marginBottom:12}}/>
         <input value={sub} onChange={e=>setSub(e.target.value)} placeholder="Sottotitolo" style={{width:"100%",padding:"8px 0",border:"none",borderBottom:`1px solid ${BDL}`,background:"transparent",color:TS,fontSize:16,fontStyle:"italic",outline:"none",marginBottom:24}}/>
 
