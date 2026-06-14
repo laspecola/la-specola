@@ -83,6 +83,8 @@ function AdminApp({password}){
       date:article.edition_date||article.date||tod(),
       links:article.links||[],
       audio_url:article.audio_url||null,
+      image_url:article.image_url||null,
+      video_url:article.video_url||null,
     };
     if(!isNew)clean.id=article.id;
     const r=await fetch("/api/articles",{method,headers,body:JSON.stringify(clean)});
@@ -346,26 +348,47 @@ ${artPrompt}`;
     const [body,setBody]=useState(a.body||"");
     const [sec,setSec]=useState(a.section||"attualita");
     const [audioUrl,setAudioUrl]=useState(a.audio_url||"");
-    const [uploading,setUploading]=useState(false);
+    const [imageUrl,setImageUrl]=useState(a.image_url||"");
+    const [videoUrl,setVideoUrl]=useState(a.video_url||"");
+    const [uploading,setUploading]=useState("");
     const [saving,setSaving]=useState(false);
     const w=body.trim().split(/\s+/).filter(Boolean).length;
     const sc=SECTIONS.find(x=>x.id===sec);
-    const doSave=async(st)=>{setSaving(true);await saveArt({...a,title,subtitle:sub,body,section:sec,audio_url:audioUrl,links:[],status:st});setSaving(false)};
+    const doSave=async(st)=>{setSaving(true);await saveArt({...a,title,subtitle:sub,body,section:sec,audio_url:audioUrl,image_url:imageUrl,video_url:videoUrl,links:[],status:st});setSaving(false)};
 
-    const uploadAudio=async(e)=>{
+    const doUpload=async(e,kind,setter)=>{
       const file=e.target.files?.[0];
       if(!file)return;
-      setUploading(true);
+      setUploading(kind);
       try{
         const fd=new FormData();
         fd.append("file",file);
         const r=await fetch("/api/upload",{method:"POST",headers:{"x-admin-password":password},body:fd});
         const d=await r.json();
         if(d.error){fl("Errore upload: "+d.error,"err");}
-        else{setAudioUrl(d.url);fl("Audio caricato!");}
+        else{setter(d.url);fl(kind+" caricato!");}
       }catch(err){fl("Errore: "+err.message,"err");}
-      setUploading(false);
+      setUploading("");
     };
+
+    const DropZone=({kind,accept,label,url,setter})=>(
+      <div style={{background:BWM,borderRadius:10,border:`1px solid ${BDL}`,padding:18,marginBottom:16}}>
+        <Lab>{label} <span style={{color:BD,fontFamily:"'Titillium Web'",textTransform:"none",letterSpacing:0}}>(opzionale)</span></Lab>
+        {url?<div>
+          {kind==="Immagine"&&<img src={url} alt="" style={{width:"100%",maxHeight:240,objectFit:"cover",borderRadius:8,marginBottom:10}}/>}
+          {kind==="Audio"&&<audio controls src={url} style={{width:"100%",marginBottom:10}}/>}
+          {kind==="Video"&&<video controls src={url} style={{width:"100%",maxHeight:280,borderRadius:8,marginBottom:10,background:"#000"}}/>}
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <span style={{fontSize:11,color:OK,fontWeight:600}}>✓ {kind} caricato</span>
+            <Btn small v="dan" onClick={()=>setter("")}>Rimuovi</Btn>
+            <label style={{cursor:"pointer"}}><span style={{display:"inline-block"}}><Btn small v="gh" onClick={()=>{}} style={{pointerEvents:"none"}}>Sostituisci</Btn></span><input type="file" accept={accept} onChange={e=>doUpload(e,kind,setter)} style={{display:"none"}}/></label>
+          </div>
+        </div>:<label style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"20px",border:`2px dashed ${BD}`,borderRadius:8,cursor:uploading===kind?"wait":"pointer",background:BW}}>
+          <input type="file" accept={accept} onChange={e=>doUpload(e,kind,setter)} disabled={uploading===kind} style={{display:"none"}}/>
+          <span style={{fontSize:13,color:uploading===kind?AC:TS}}>{uploading===kind?"Caricamento in corso...":`Clicca per caricare ${label.toLowerCase()}`}</span>
+        </label>}
+      </div>
+    );
 
     return(
       <div style={{animation:"fadeUp 0.3s ease"}}>
@@ -376,26 +399,15 @@ ${artPrompt}`;
         <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>{SECTIONS.map(x=><button key={x.id} onClick={()=>setSec(x.id)} style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${sec===x.id?x.color:BD}`,background:sec===x.id?x.color+"0D":"transparent",color:sec===x.id?x.color:TD,cursor:"pointer",fontWeight:600,fontSize:12}}>{x.icon} {x.name}</button>)}</div>
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Titolo" style={{width:"100%",padding:"12px 0",border:"none",borderBottom:`2px solid ${sc?.color||BD}`,background:"transparent",color:TX,fontFamily:"'Orbitron'",fontSize:22,fontWeight:700,outline:"none",marginBottom:12}}/>
         <input value={sub} onChange={e=>setSub(e.target.value)} placeholder="Sottotitolo" style={{width:"100%",padding:"8px 0",border:"none",borderBottom:`1px solid ${BDL}`,background:"transparent",color:TS,fontSize:16,fontStyle:"italic",outline:"none",marginBottom:24}}/>
+
+        {/* Immagine di copertina — sopra il testo */}
+        <DropZone kind="Immagine" accept=".jpg,.jpeg,.png,.webp,.gif" label="🖼 Immagine di copertina" url={imageUrl} setter={setImageUrl}/>
+
         <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Scrivi l'editoriale..." style={{width:"100%",minHeight:420,padding:20,borderRadius:10,border:`1px solid ${BD}`,background:BW,color:TX,fontSize:15,lineHeight:1.85,resize:"vertical",outline:"none",marginBottom:6}}/>
         <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginBottom:24,fontSize:11,color:TD,fontFamily:"'Orbitron'"}}><span>{w} parole</span><span style={{color:w>=800&&w<=1100?OK:w>1100?DG:AC}}>{w<800?`mancano ${800-w}`:w>1100?`${w-1100} in eccesso`:"✓ ok"}</span></div>
 
-        {/* Audio upload */}
-        <div style={{background:BWM,borderRadius:10,border:`1px solid ${BDL}`,padding:18,marginBottom:16}}>
-          <Lab>🎵 Traccia audio <span style={{color:BD,fontFamily:"'Titillium Web'",textTransform:"none",letterSpacing:0}}>(opzionale)</span></Lab>
-          {audioUrl?<div>
-            <audio controls src={audioUrl} style={{width:"100%",marginBottom:10,borderRadius:8}}/>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:11,color:OK,fontWeight:600}}>✓ Audio caricato</span>
-              <Btn small v="dan" onClick={()=>setAudioUrl("")}>Rimuovi</Btn>
-              <label style={{cursor:"pointer"}}><Btn small v="gh" onClick={()=>{}} style={{pointerEvents:"none"}}>Sostituisci</Btn><input type="file" accept=".mp3,.wav,.ogg,.m4a" onChange={uploadAudio} style={{display:"none"}}/></label>
-            </div>
-          </div>:<div>
-            <label style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"20px",border:`2px dashed ${BD}`,borderRadius:8,cursor:uploading?"wait":"pointer",transition:"all 0.2s",background:BW}}>
-              <input type="file" accept=".mp3,.wav,.ogg,.m4a" onChange={uploadAudio} disabled={uploading} style={{display:"none"}}/>
-              <span style={{fontSize:13,color:uploading?AC:TS}}>{uploading?"Caricamento in corso...":"Clicca per caricare un file audio (MP3, WAV, OGG, M4A)"}</span>
-            </label>
-          </div>}
-        </div>
+        <DropZone kind="Audio" accept=".mp3,.wav,.ogg,.m4a" label="🎵 Traccia audio" url={audioUrl} setter={setAudioUrl}/>
+        <DropZone kind="Video" accept=".mp4,.webm,.mov" label="🎬 Video" url={videoUrl} setter={setVideoUrl}/>
 
         <div style={{padding:14,background:BWM,borderRadius:8,border:`1px solid ${BDL}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><span style={{fontSize:10,color:TD,fontFamily:"'Orbitron'",letterSpacing:1}}>AUTORE</span><div style={{fontSize:15,color:TX,fontWeight:600,marginTop:2}}>Francesco Pasquale</div></div><div style={{width:38,height:38,borderRadius:"50%",background:`linear-gradient(135deg,${AC},${sc?.color||BD})`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Orbitron'",fontSize:13,fontWeight:700,color:"#fff"}}>FP</div></div>
       </div>
@@ -488,7 +500,7 @@ ${artPrompt}`;
       <main style={{maxWidth:860,margin:"0 auto",padding:"28px 20px 50px"}}>
         {ed?<EditorView/>:view==="scanner"?<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◎</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Scanner</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Cerca notizie di oggi e genera bozze</p></div></div><ScannerView/></>:view==="chisiamo"?<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>✎</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Chi siamo</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Modifica la pagina pubblica</p></div></div><ChiSiamoView/></>:<><div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}><div style={{width:42,height:42,borderRadius:10,background:AC+"12",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:`1px solid ${AC}22`}}>◫</div><div><h2 style={{fontFamily:"'Orbitron'",fontSize:17,fontWeight:700}}>Dashboard</h2><p style={{fontSize:13,color:TD,marginTop:1}}>Gestisci i tuoi articoli</p></div></div><DashView/></>}
       </main>
-      <footer style={{textAlign:"center",padding:"16px",borderTop:`1px solid ${BD}`,fontSize:11,color:TD,fontStyle:"italic"}}>La Specola — Osservare l'oggi per comprendere il domani</footer>
+      <footer style={{textAlign:"center",padding:"16px",borderTop:`1px solid ${BD}`,fontSize:11,color:TD,fontStyle:"italic"}}>La Specola — Osservare oggi per comprendere il domani</footer>
     </div>
   );
 }
