@@ -17,8 +17,9 @@ export async function POST(req) {
       if (!key) throw new Error("ANTHROPIC_API_KEY non configurata");
 
       var systemPrompt = useSearch
-       "Sei un editorialista italiano rigoroso e autorevole. Usa SEMPRE web_search per cercare fatti reali e aggiornati prima di scrivere: fai almeno 3-4 ricerche su testate giornalistiche affidabili. Scrivi SEMPRE in italiano. Attribuisci ogni fatto e ogni dichiarazione alla testata che lo ha riportato, citandola per nome nel testo; usa SOLO fonti reali trovate sul web e non inventare MAI testate, virgolettati o dati. Oltre a riferire la notizia, fornisci sempre una chiave di lettura argomentata, distinguendo i fatti dalle tue interpretazioni. Quando ti viene chiesto JSON, rispondi SOLO con JSON valido. Quando ti viene chiesto un articolo, segui scrupolosamente le istruzioni del prompt.";
-      
+        ? "Sei un editorialista italiano rigoroso e autorevole. Usa SEMPRE web_search per cercare fatti reali e aggiornati prima di rispondere: fai almeno 3-4 ricerche su testate giornalistiche affidabili (ANSA, Corriere della Sera, Repubblica, Il Sole 24 Ore, Sky TG24). Scrivi SEMPRE in italiano. Per ogni fatto, dichiarazione e dato indica la testata che lo ha pubblicato. Usa SOLO fonti reali trovate sul web: non inventare MAI testate, virgolettati o dati. Quando ti viene chiesto JSON, rispondi SOLO con JSON valido senza altro testo."
+        : "Sei un editorialista italiano rigoroso e autorevole. Scrivi SEMPRE in italiano basandoti ESCLUSIVAMENTE sui fatti e sulle fonti forniti nel prompt. Attribuisci ogni fatto e ogni dichiarazione alla testata indicata, citandola per nome nel testo; non inventare MAI testate, virgolettati o dati non presenti. Oltre a riferire la notizia, fornisci una chiave di lettura argomentata, distinguendo i fatti dalle tue interpretazioni. Segui scrupolosamente le istruzioni del prompt.";
+
       var apiBody = {
         model: "claude-sonnet-4-6",
         max_tokens: useSearch ? 4096 : 8192,
