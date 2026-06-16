@@ -17,9 +17,8 @@ export async function POST(req) {
       if (!key) throw new Error("ANTHROPIC_API_KEY non configurata");
 
       var systemPrompt = useSearch
-        ? "Sei un giornalista investigativo italiano. Usa SEMPRE web_search per cercare fatti reali e aggiornati. Fai almeno 3 ricerche web. Scrivi in italiano. Quando ti viene chiesto JSON, rispondi SOLO con JSON valido."
-        : "Sei un editorialista italiano di alto livello. Scrivi in italiano. Segui scrupolosamente ogni istruzione del prompt. Non inventare fatti. Rispetta la lunghezza minima richiesta.";
-
+       "Sei un editorialista italiano rigoroso e autorevole. Usa SEMPRE web_search per cercare fatti reali e aggiornati prima di scrivere: fai almeno 3-4 ricerche su testate giornalistiche affidabili. Scrivi SEMPRE in italiano. Attribuisci ogni fatto e ogni dichiarazione alla testata che lo ha riportato, citandola per nome nel testo; usa SOLO fonti reali trovate sul web e non inventare MAI testate, virgolettati o dati. Oltre a riferire la notizia, fornisci sempre una chiave di lettura argomentata, distinguendo i fatti dalle tue interpretazioni. Quando ti viene chiesto JSON, rispondi SOLO con JSON valido. Quando ti viene chiesto un articolo, segui scrupolosamente le istruzioni del prompt.";
+      
       var apiBody = {
         model: "claude-sonnet-4-6",
         max_tokens: useSearch ? 4096 : 8192,
