@@ -204,15 +204,17 @@ ${focus.trim() ? "Focus: " + focus : ""}
 
 Cerca su ANSA, Corriere della Sera, Repubblica, Il Sole 24 Ore, Sky TG24 e altre fonti autorevoli.
 
+REGOLA SULLE FONTI — OBBLIGATORIA: per OGNI fatto, dichiarazione e dato indica tra parentesi quadre la testata precisa che lo ha pubblicato, es. [Fonte: Corriere della Sera], [Fonte: ANSA]. L'articolo finale dovrà citare queste testate per nome: senza questa indicazione il dossier è inutilizzabile.
+
 Produci un DOSSIER COMPLETO con:
-1. FATTI ACCERTATI: cosa è successo, quando, dove, chi. Date e dati precisi.
-2. DICHIARAZIONI TESTUALI: chi ha detto cosa, con fonte.
-3. CONTESTO: precedenti, stato della questione prima di oggi.
-4. POSIZIONI CONTRASTANTI: favorevoli, contrari, contraddizioni tra le fonti.
-5. DATI E NUMERI: statistiche, cifre, percentuali.
+1. FATTI ACCERTATI: cosa è successo, quando, dove, chi. Date e dati precisi. [Fonte: testata] per ciascuno.
+2. DICHIARAZIONI TESTUALI: chi ha detto cosa, con le parole esatte tra virgolette. [Fonte: testata] per ciascuna.
+3. CONTESTO: precedenti, stato della questione prima di oggi. [Fonte: testata].
+4. POSIZIONI CONTRASTANTI: favorevoli, contrari, contraddizioni tra le fonti. Indica quale testata sostiene cosa.
+5. DATI E NUMERI: statistiche, cifre, percentuali. [Fonte: testata] per ciascun dato.
 6. LIMITI E INCERTEZZE: cosa non si sa, cosa è controverso, dove le fonti divergono.
 
-Scrivi in italiano. Sii completo e dettagliato. Questo dossier sarà la base per un articolo di analisi.`;
+Scrivi in italiano. Riporta SOLO fonti realmente trovate sul web: non inventare testate né virgolettati. Questo dossier è la base per un articolo che citerà le fonti per nome.`;
 
         const fatti = await scanAI(promptRicerca, "claude", true);
 
@@ -301,6 +303,17 @@ REGOLE ASSOLUTE:
 - MINIMO 800 parole. Se scrivi meno di 800 è INSUFFICIENTE.
 - Basa l'articolo ESCLUSIVAMENTE sui fatti del dossier. Non aggiungere informazioni non presenti.
 - NON includere firma "di Francesco Pasquale".
+
+CITAZIONE DELLE FONTI — OBBLIGATORIO:
+- Attribuisci fatti e dichiarazioni alla testata che li ha riportati, nominandola nel testo: "come riporta il Corriere della Sera", "secondo l'ANSA", "in un'analisi del Sole 24 Ore", "lo ha dichiarato X a Repubblica".
+- Usa SOLO le testate indicate nel dossier (i [Fonte: ...]). NON inventare testate, autori, virgolettati o numeri non presenti nel dossier.
+- Distribuisci le attribuzioni lungo l'articolo: cita almeno 3 testate diverse, non concentrate in un solo punto.
+- Quando il dossier segnala che due fonti divergono, riportalo esplicitamente: il confronto tra versioni dà spessore e credibilità.
+
+CHIAVE DI LETTURA — IL VALORE AGGIUNTO:
+- L'articolo non deve solo riassumere la notizia, ma offrire una chiave di lettura qualificata: spiega PERCHÉ conta, quali interessi o tensioni più ampie mette in luce, qual è la posta in gioco.
+- Proponi una tesi interpretativa chiara, presentata come tale ("una lettura possibile è...", "i fatti suggeriscono che..."), mai come dato acquisito.
+- Scrivi con l'autorevolezza di un commento qualificato: voce competente e sicura, che argomenta invece di sentenziare.
 
 VINCOLI DI RIGORE — OBBLIGATORI:
 - NON attribuire intenzioni, strategie o calcoli ai leader come fatti acquisiti. Se interpreti, segnalalo ("è plausibile che", "i fatti suggeriscono").
@@ -509,7 +522,10 @@ ${artPrompt}`;
   );
 }
 
-export default function AdminPage(){
+// ═══════════════════════════════
+// ROOT — gestione login
+// ═══════════════════════════════
+export default function Page(){
   const [pw,setPw]=useState(null);
   if(!pw)return <Login onLogin={setPw}/>;
   return <AdminApp password={pw}/>;
