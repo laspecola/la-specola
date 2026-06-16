@@ -21,7 +21,7 @@ export async function POST(req) {
         : "Sei un editorialista italiano di alto livello. Scrivi in italiano. Segui scrupolosamente ogni istruzione del prompt. Non inventare fatti. Rispetta la lunghezza minima richiesta.";
 
       var apiBody = {
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: useSearch ? 4096 : 8192,
         system: systemPrompt,
         messages: [{ role: "user", content: prompt }]
